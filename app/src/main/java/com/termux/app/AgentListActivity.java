@@ -105,7 +105,7 @@ public final class AgentListActivity extends AgentBaseActivity {
             return false;
         });
 
-        AgentNav.wire(this, AgentNav.Screen.NONE, null);
+        AgentNav.wire(this, AgentNav.Screen.MENU, null);
     }
 
     @Override

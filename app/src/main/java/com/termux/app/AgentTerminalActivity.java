@@ -119,6 +119,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     @Override
     protected void onDestroy() {
         restoreDisplayedSessionClient();
+        if (mHeader != null) mHeader.release();
         super.onDestroy();
     }
 
@@ -143,27 +144,33 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     }
 
     private void showSession(@NonNull TermuxSession wrapper) {
-        TerminalSession session = wrapper.getTerminalSession();
-        if (session == null) {
+        // Defensive: a terminal attach hiccup must never crash the app —
+        // fall back to the empty state instead.
+        try {
+            TerminalSession session = wrapper.getTerminalSession();
+            if (session == null) {
+                showEmptyState();
+                return;
+            }
+            restoreDisplayedSessionClient();
+            session.updateTerminalSessionClient(mSessionClient);
+            mDisplayedSession = session;
+
+            loadColorsAndFont();
+            mTerminalView.attachSession(session);
+            mTerminalView.onScreenUpdated();
+            mEmptyView.setVisibility(View.GONE);
+            mTerminalView.setVisibility(View.VISIBLE);
+
+            TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
+            if (prefs != null) prefs.setCurrentSession(session.mHandle);
+            mHeader.setStatus(sessionTitle(session));
+
+            mTerminalView.requestFocus();
+            KeyboardUtils.showSoftKeyboard(this, mTerminalView);
+        } catch (Exception e) {
             showEmptyState();
-            return;
         }
-        restoreDisplayedSessionClient();
-        session.updateTerminalSessionClient(mSessionClient);
-        mDisplayedSession = session;
-
-        loadColorsAndFont();
-        mTerminalView.attachSession(session);
-        mTerminalView.onScreenUpdated();
-        mEmptyView.setVisibility(View.GONE);
-        mTerminalView.setVisibility(View.VISIBLE);
-
-        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
-        if (prefs != null) prefs.setCurrentSession(session.mHandle);
-        mHeader.setStatus(sessionTitle(session));
-
-        mTerminalView.requestFocus();
-        KeyboardUtils.showSoftKeyboard(this, mTerminalView);
     }
 
     private void showEmptyState() {
@@ -185,17 +192,20 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     }
 
     private void handleSessionFinished(@NonNull TerminalSession finished) {
-        if (mTermuxService == null) return;
-        boolean wasDisplayed = finished == mDisplayedSession;
-        if (wasDisplayed) mDisplayedSession = null;
-        mTermuxService.removeTermuxSession(finished);
-        if (wasDisplayed) {
-            TermuxSession next = storedOrLastSession();
-            if (next != null && next.getTerminalSession() != finished) {
-                showSession(next);
-            } else {
-                showEmptyState();
+        try {
+            if (mTermuxService == null) return;
+            boolean wasDisplayed = finished == mDisplayedSession;
+            if (wasDisplayed) mDisplayedSession = null;
+            mTermuxService.removeTermuxSession(finished);
+            if (wasDisplayed) {
+                TermuxSession next = storedOrLastSession();
+                if (next != null && next.getTerminalSession() != finished) {
+                    showSession(next);
+                } else {
+                    showEmptyState();
+                }
             }
+        } catch (Exception ignored) {
         }
     }
 
@@ -278,8 +288,11 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
         @Override
         public void onTextChanged(@NonNull TerminalSession changedSession) {
-            if (changedSession == mDisplayedSession) {
-                mTerminalView.onScreenUpdated();
+            try {
+                if (changedSession == mDisplayedSession && mTerminalView != null) {
+                    mTerminalView.onScreenUpdated();
+                }
+            } catch (Exception ignored) {
             }
         }
 

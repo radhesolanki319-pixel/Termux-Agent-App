@@ -128,12 +128,62 @@ public final class AgentFilesActivity extends AgentBaseActivity {
     }
 
     private void showFileDetails(final File f) {
-        new AlertDialog.Builder(this)
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
             .setTitle(f.getName())
             .setMessage((f.isDirectory() ? "Folder" : humanSize(f.length())) + "\n" + f.getAbsolutePath())
             .setPositiveButton("Terminal kholo", (d, w) -> startActivity(new Intent(this, AgentTerminalActivity.class)))
-            .setNegativeButton("Band", null)
-            .show();
+            .setNegativeButton("Band", null);
+        if (!f.isDirectory() && isTextFile(f)) {
+            builder.setNeutralButton("Content dekho", (d, w) -> showFileContent(f));
+        }
+        builder.show();
+    }
+
+    private static boolean isTextFile(File f) {
+        String name = f.getName().toLowerCase(Locale.ROOT);
+        String[] exts = {".md", ".txt", ".log", ".sh", ".json", ".properties",
+            ".py", ".js", ".xml", ".yaml", ".yml", ".toml", ".env"};
+        for (String ext : exts) {
+            if (name.endsWith(ext)) return true;
+        }
+        return false;
+    }
+
+    /** Shows the start of a text file (e.g. crash_log.md) in a scrollable dialog. */
+    private void showFileContent(final File f) {
+        new Thread(() -> {
+            String content;
+            try {
+                byte[] buffer = new byte[20000];
+                int read;
+                try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+                    read = in.read(buffer);
+                }
+                if (read <= 0) {
+                    content = "(khaali file)";
+                } else {
+                    content = new String(buffer, 0, read, java.nio.charset.StandardCharsets.UTF_8);
+                    if (f.length() > read) content += "\n\n... (file aur badi hai)";
+                }
+            } catch (Exception e) {
+                content = "File padh nahi paya: " + e.getMessage();
+            }
+            final String text = content;
+            runOnUiThread(() -> {
+                TextView view = new TextView(this);
+                view.setText(text);
+                view.setTextSize(12);
+                view.setPadding(48, 24, 48, 24);
+                view.setTextIsSelectable(true);
+                android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+                scroll.addView(view);
+                new AlertDialog.Builder(this)
+                    .setTitle(f.getName())
+                    .setView(scroll)
+                    .setPositiveButton("Band", null)
+                    .show();
+            });
+        }).start();
     }
 
     static String humanSize(long bytes) {

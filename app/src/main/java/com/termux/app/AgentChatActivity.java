@@ -63,7 +63,6 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
 
     private boolean mSuggestionsShown;
     private long mWorkingSince;
-    private boolean mWasEmptyAtStart = true;
 
     private final Runnable mWorkTick = new Runnable() {
         @Override
@@ -141,7 +140,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         });
         findViewById(R.id.chat_plus).setOnClickListener(v -> onPlus());
 
-        AgentNav.wire(this, AgentNav.Screen.CHAT, () -> mDrawer.openDrawer(GravityCompat.START));
+        AgentNav.wire(this, AgentNav.Screen.CHAT, null);
 
         if (getIntent() != null && getIntent().getBooleanExtra(EXTRA_OPEN_DRAWER, false)) {
             mDrawer.openDrawer(GravityCompat.START);
@@ -165,15 +164,10 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
 
     @Override
     protected void onServiceReady() {
-        mWasEmptyAtStart = mTermuxService.isTermuxSessionsEmpty();
-        ensureBootstrapAndSession(() -> {
-            if (mWasEmptyAtStart) {
-                addMessage(ChatMessage.checklist(
-                    new String[]{"App taiyaar hai", "Session chal raha hai", "Agent se jud gaya"},
-                    new boolean[]{true, true, true}, 100));
-            }
-            refreshIdleStatus();
-        });
+        // Chat stays clean: no setup/status cards are posted here. First-run
+        // setup runs silently inside the session; the approved design keeps
+        // the chat empty until the user actually talks to an agent.
+        ensureBootstrapAndSession(this::refreshIdleStatus);
     }
 
     // ---------- chat flow ----------

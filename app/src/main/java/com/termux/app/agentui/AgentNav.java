@@ -10,10 +10,15 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.app.AgentChatActivity;
 import com.termux.app.AgentFilesActivity;
+import com.termux.app.AgentListActivity;
 import com.termux.app.AgentSimpleActivity;
 import com.termux.R;
 
-/** Wires the shared 5-icon bottom bar: Chat, Files, Ideas, Goals, Menu (grid). */
+/**
+ * Wires the shared 5-icon bottom bar: Chat, Files, Ideas, Goals, Agents (grid).
+ * The grid is the agents/apps overview — it must never mimic the header
+ * hamburger (drawer); the drawer belongs to the hamburger alone.
+ */
 public final class AgentNav {
 
     public enum Screen {CHAT, FILES, IDEAS, GOALS, MENU, NONE}
@@ -50,13 +55,7 @@ public final class AgentNav {
                 go(activity, AgentSimpleActivity.intent(activity, AgentSimpleActivity.MODE_GOALS));
         });
         menu.setOnClickListener(v -> {
-            if (menuAction != null) {
-                menuAction.run();
-            } else if (current != Screen.CHAT) {
-                Intent intent = new Intent(activity, AgentChatActivity.class);
-                intent.putExtra(AgentChatActivity.EXTRA_OPEN_DRAWER, true);
-                go(activity, intent);
-            }
+            if (current != Screen.MENU) go(activity, new Intent(activity, AgentListActivity.class));
         });
     }
 

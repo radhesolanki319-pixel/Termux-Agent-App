@@ -47,6 +47,8 @@ public final class AgentSimpleActivity extends AgentBaseActivity {
     private final List<AgentStore.Entry> mEntries = new ArrayList<>();
     private ArrayAdapter<AgentStore.Entry> mAdapter;
     private TextView mEmpty;
+    private TextView mTitle;
+    private View mInputRow;
 
     private String storeKey() {
         return "entries_" + mMode;
@@ -72,8 +74,8 @@ public final class AgentSimpleActivity extends AgentBaseActivity {
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
         mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
-        TextView title = findViewById(R.id.simple_title);
-        title.setText(isGoals() ? "Goals" : isFeed() ? "Feed" : "Ideas");
+        mTitle = findViewById(R.id.simple_title);
+        mInputRow = findViewById(R.id.simple_input_row);
 
         mEmpty = findViewById(R.id.simple_empty);
         ListView list = findViewById(R.id.simple_list);
@@ -127,20 +129,41 @@ public final class AgentSimpleActivity extends AgentBaseActivity {
             }
         });
 
-        if (isFeed()) {
-            findViewById(R.id.simple_input_row).setVisibility(View.VISIBLE);
-            final EditText input = findViewById(R.id.simple_input);
-            findViewById(R.id.simple_input_add).setOnClickListener(v -> {
-                String text = input.getText().toString().trim();
-                if (!text.isEmpty()) {
-                    String when = new SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(new Date());
-                    mEntries.add(0, new AgentStore.Entry(text, when, false));
-                    input.setText("");
-                    saveAndRefresh();
-                }
-            });
-        }
+        final EditText input = findViewById(R.id.simple_input);
+        findViewById(R.id.simple_input_add).setOnClickListener(v -> {
+            String text = input.getText().toString().trim();
+            if (!text.isEmpty()) {
+                String when = new SimpleDateFormat("d MMM, h:mm a", Locale.getDefault()).format(new Date());
+                mEntries.add(0, new AgentStore.Entry(text, when, false));
+                input.setText("");
+                saveAndRefresh();
+            }
+        });
 
+        applyMode();
+    }
+
+    /**
+     * This activity is singleTop and the bottom bar reuses the running
+     * instance (FLAG_ACTIVITY_REORDER_TO_FRONT), so a mode switch (Ideas ->
+     * Goals -> Feed) arrives here, not in onCreate. Without this, the bottom
+     * bar's Goals/Feed buttons looked dead: the instance came forward but
+     * kept showing the old mode.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String mode = intent != null ? intent.getStringExtra(EXTRA_MODE) : null;
+        if (mode != null && !mode.equals(mMode)) {
+            mMode = mode;
+            applyMode();
+        }
+    }
+
+    private void applyMode() {
+        mTitle.setText(isGoals() ? "Goals" : isFeed() ? "Feed" : "Ideas");
+        mInputRow.setVisibility(isFeed() ? View.VISIBLE : View.GONE);
         AgentNav.Screen screen = isGoals() ? AgentNav.Screen.GOALS
             : MODE_IDEAS.equals(mMode) ? AgentNav.Screen.IDEAS : AgentNav.Screen.NONE;
         AgentNav.wire(this, screen, null);
