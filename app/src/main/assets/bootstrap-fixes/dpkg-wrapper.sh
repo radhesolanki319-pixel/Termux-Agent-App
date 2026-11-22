@@ -11,10 +11,18 @@
 # har .deb ko pehle com.tagent path me rewrite karke dpkg-real ko deta hai.
 # Bina .deb wale saare calls (--configure, --remove, queries waghera)
 # seedha pass-through hote hain.
+#
+# Rewrite kahin fail ho to wajah $HOME/dpkg_wrapper.log me likhi jati hai
+# (chup-chaap original .deb pass karne se asal error dikhta hi nahi tha).
 
 PREFIX=/data/data/com.tagent/files/usr
 DPKG_REAL="$PREFIX/bin/dpkg-real"
 DPKG_DEB="$PREFIX/bin/dpkg-deb"
+LOG="${HOME:-/data/data/com.tagent/files/home}/dpkg_wrapper.log"
+
+log() {
+    printf '%s\n' "$*" >> "$LOG" 2>/dev/null || true
+}
 
 # Koi .deb argument hai hi nahi -> pass-through
 has_deb=0
@@ -27,7 +35,11 @@ if [ "$has_deb" -eq 0 ]; then
     exec "$DPKG_REAL" "$@"
 fi
 
-WORK=$(mktemp -d "$PREFIX/tmp/dpkg-rewrite.XXXXXX") || exec "$DPKG_REAL" "$@"
+mkdir -p "$PREFIX/tmp" 2>/dev/null
+WORK=$(mktemp -d "$PREFIX/tmp/dpkg-rewrite.XXXXXX") || {
+    log "FAIL mktemp: tmp dir nahi bana, saare .deb bina rewrite ke gaye: $*"
+    exec "$DPKG_REAL" "$@"
+}
 trap 'rm -rf "$WORK"' EXIT
 
 new_args=()
@@ -45,14 +57,19 @@ for a in "$@"; do
                         *data/data/com.termux/*) need=1 ;;
                         *) need=0 ;;
                     esac
+                else
+                    log "WARN detection fail (dpkg-deb -c), rewrite try hoga: $a"
                 fi
                 if [ "$need" -eq 1 ]; then
                     i=$((i + 1))
                     root="$WORK/root$i"
                     out="$WORK/rewritten$i.deb"
                     mkdir -p "$root"
-                    if "$DPKG_DEB" -R "$a" "$root" >/dev/null 2>&1 \
-                        && [ -d "$root/data/data/com.termux" ]; then
+                    if ! "$DPKG_DEB" -R "$a" "$root" >/dev/null 2>&1; then
+                        log "FAIL extract (dpkg-deb -R): $a"
+                    elif [ ! -d "$root/data/data/com.termux" ]; then
+                        log "FAIL extract ke baad data/data/com.termux dir nahi mila: $a"
+                    else
                         mv "$root/data/data/com.termux" "$root/data/data/com.tagent"
                         grep -rl 'com\.termux' "$root" 2>/dev/null | while IFS= read -r f; do
                             sed -i 's|com\.termux|com.tagent|g' "$f"
@@ -71,6 +88,8 @@ for a in "$@"; do
                         fi
                         if "$DPKG_DEB" --build "$root" "$out" >/dev/null 2>&1; then
                             rewritten="$out"
+                        else
+                            log "FAIL rebuild (dpkg-deb --build): $a"
                         fi
                     fi
                 fi

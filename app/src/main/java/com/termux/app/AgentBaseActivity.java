@@ -57,6 +57,9 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
     @Override
     public void onServiceConnected(ComponentName name, IBinder binder) {
         mTermuxService = ((TermuxService.LocalBinder) binder).service;
+        // Har Agent screen par (chat, terminal, agents...) — sirf chat par
+        // bharosa nahi: app aksar seedha terminal screen par resume hota hai.
+        applyDpkgWrapperFix();
         onServiceReady();
     }
 
@@ -109,9 +112,16 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
      * prefixes in place from the bundled assets: an ELF at bin/dpkg is moved to
      * bin/dpkg-real and the wrapper takes its place; the pristine copies under
      * share/termux-agent, the profile.d guard and the dpkg.cfg post-invoke hook
-     * are (re)installed too. Keep assets/bootstrap-fixes/* byte-identical to
-     * ci/bootstrap-extras/*. Never throws: a failure here must not break the
-     * app, the first-run setup simply retries on a later launch.
+     * are (re)installed too. Also (re)installs the 96-dpkg-hold.sh profile.d
+     * one-shot, which puts the dpkg package itself on apt hold so a dpkg
+     * self-upgrade can never wipe the wrapper again (the restore guard alone
+     * proved insufficient on-device: it only runs in a NEW login shell, while
+     * the failing apt run keeps using the stock binary). This fix runs on
+     * every Agent screen's service connect, not just the chat screen, because
+     * the app often resumes straight into the terminal screen. Keep
+     * assets/bootstrap-fixes/* byte-identical to ci/bootstrap-extras/*.
+     * Never throws: a failure here must not break the app, the first-run
+     * setup simply retries on a later launch.
      */
     protected void applyDpkgWrapperFix() {
         try {
@@ -121,12 +131,28 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
             if (!binDir.isDirectory() || !dpkg.isFile()) return; // bootstrap not extracted yet
             File dpkgReal = new File(binDir, "dpkg-real");
             boolean dpkgIsElf = isElfFile(dpkg);
-            if (dpkgIsElf || !dpkgReal.isFile()) {
-                if (dpkgIsElf) {
-                    if (dpkgReal.exists() && !dpkgReal.delete()) return;
-                    if (!dpkg.renameTo(dpkgReal)) return;
+            if (dpkgIsElf) {
+                // dpkg self-upgrade ne wrapper uda diya: stock binary ko
+                // dpkg-real banao aur wrapper wapas lagao. Asset pehle padho
+                // (fail ho to kuch touch mat karo), rename fail ho to
+                // stream-copy fallback, aur copy verify karke hi aage badho.
+                byte[] wrapperBytes = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
+                if (dpkgReal.exists() && !dpkgReal.delete()) return;
+                if (!dpkg.renameTo(dpkgReal) && !copyFile(dpkg, dpkgReal)) return;
+                if (!isElfFile(dpkgReal)) return;
+                writeBytes(dpkg, wrapperBytes);
+            } else if (dpkgReal.isFile()) {
+                // Wrapper script pehle se hai: asset me nayi version ho to
+                // refresh karo (sirf tab, jab maujud file hamari hi ho).
+                try {
+                    byte[] asset = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
+                    byte[] current = readFileBytes(dpkg);
+                    if (current != null && !Arrays.equals(current, asset)
+                        && new String(current, StandardCharsets.UTF_8).contains("Termux Agent App")) {
+                        writeBytes(dpkg, asset);
+                    }
+                } catch (Exception ignored) {
                 }
-                writeBytes(dpkg, readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh"));
             }
             dpkg.setExecutable(true, false);
             if (dpkgReal.isFile()) dpkgReal.setExecutable(true, false);
@@ -138,6 +164,8 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
             restore.setExecutable(true, false);
             writeBytes(new File(prefix, "etc/profile.d/97-dpkg-wrapper-guard.sh"),
                 readAssetBytes("bootstrap-fixes/97-dpkg-wrapper-guard.sh"));
+            writeBytes(new File(prefix, "etc/profile.d/96-dpkg-hold.sh"),
+                readAssetBytes("bootstrap-fixes/96-dpkg-hold.sh"));
             writeBytes(new File(prefix, "etc/dpkg/dpkg.cfg"),
                 ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
                     + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
@@ -153,6 +181,30 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
                 && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F';
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static boolean copyFile(File src, File dst) {
+        try (FileInputStream in = new FileInputStream(src);
+             FileOutputStream out = new FileOutputStream(dst)) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static byte[] readFileBytes(File file) {
+        try (FileInputStream in = new FileInputStream(file);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            return out.toByteArray();
+        } catch (Exception e) {
+            return null;
         }
     }
 
