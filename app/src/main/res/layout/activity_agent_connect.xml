@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/agent_bg"
+    android:orientation="vertical">
+
+    <include layout="@layout/view_agent_header" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="10dp"
+        android:text="Connect"
+        android:textColor="@color/agent_text"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/connect_providers"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <RadioButton
+            android:id="@+id/connect_openrouter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_agent_card"
+            android:padding="18dp"
+            android:text="OpenRouter"
+            android:textColor="@color/agent_text"
+            android:textSize="17sp" />
+
+        <RadioButton
+            android:id="@+id/connect_freellm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_agent_card"
+            android:padding="18dp"
+            android:text="FreeLLM"
+            android:textColor="@color/agent_text"
+            android:textSize="17sp" />
+
+        <RadioButton
+            android:id="@+id/connect_custom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_agent_card"
+            android:padding="18dp"
+            android:text="Custom"
+            android:textColor="@color/agent_text"
+            android:textSize="17sp" />
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/connect_key"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_agent_pill"
+        android:hint="API Key"
+        android:inputType="textPassword"
+        android:maxLines="1"
+        android:paddingStart="18dp"
+        android:paddingTop="13dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="13dp"
+        android:textColor="@color/agent_text"
+        android:textColorHint="@color/agent_dim"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/connect_save"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_agent_bubble_user"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:text="Connect karo"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/connect_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:gravity="center"
+        android:textColor="@color/agent_text_secondary"
+        android:textSize="14sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <include layout="@layout/view_agent_bottom_bar" />
+</LinearLayout>

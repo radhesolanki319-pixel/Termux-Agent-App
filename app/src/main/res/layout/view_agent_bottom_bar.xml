@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="60dp"
+    android:orientation="horizontal"
+    android:paddingTop="4dp"
+    android:paddingBottom="8dp">
+
+    <ImageButton
+        android:id="@+id/nav_chat"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Chat"
+        android:padding="13dp"
+        android:src="@drawable/ic_agent_chat" />
+
+    <ImageButton
+        android:id="@+id/nav_files"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Files"
+        android:padding="13dp"
+        android:src="@drawable/ic_agent_files" />
+
+    <ImageButton
+        android:id="@+id/nav_ideas"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Ideas"
+        android:padding="13dp"
+        android:src="@drawable/ic_agent_bulb" />
+
+    <ImageButton
+        android:id="@+id/nav_goals"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Goals"
+        android:padding="13dp"
+        android:src="@drawable/ic_agent_check" />
+
+    <ImageButton
+        android:id="@+id/nav_menu"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Menu"
+        android:padding="13dp"
+        android:src="@drawable/ic_agent_grid" />
+</LinearLayout>

@@ -243,4 +243,22 @@
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>
 
+
+    <!-- Agent UI strings -->
+    <string name="agent_status_online">Online \u2022 Ready</string>
+    <string name="agent_status_offline">Offline</string>
+    <string name="agent_status_stopped">Band hai</string>
+    <string name="agent_hint_message">Message</string>
+    <string name="agent_agents">Agents</string>
+    <string name="agent_sessions">Sessions</string>
+    <string name="agent_files">Files</string>
+    <string name="agent_media">Media</string>
+    <string name="agent_open">Open</string>
+    <string name="agent_start">Start</string>
+    <string name="agent_send_file">Bhejo</string>
+    <string name="agent_search">Search</string>
+    <string name="agent_suggestion_files">Files dikhao</string>
+    <string name="agent_suggestion_script">Script banao</string>
+    <string name="agent_suggestion_check">System check karo</string>
+
 </resources>

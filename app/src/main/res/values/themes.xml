@@ -46,4 +46,13 @@
         <item name="extraKeysButtonActiveBackgroundColor">@color/grey_500</item>
     </style>
 
+
+    <!-- Agent UI theme: fixed dark, no action bar (chat-first layer) -->
+    <style name="Theme.AgentUI" parent="Theme.TermuxApp.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/agent_bg</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="colorPrimary">#000000</item>
+    </style>
+
 </resources>

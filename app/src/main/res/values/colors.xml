@@ -1,3 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Agent UI (chat-first layer) colors — dark-only design -->
+    <color name="agent_bg">#050507</color>
+    <color name="agent_surface">#202024</color>
+    <color name="agent_surface2">#2C2C31</color>
+    <color name="agent_track">#3C3C42</color>
+    <color name="agent_text">#F2F2F5</color>
+    <color name="agent_text_secondary">#9E9EA4</color>
+    <color name="agent_dim">#6E6E72</color>
+    <color name="agent_accent">#0A6EF5</color>
+    <color name="agent_success">#34C759</color>
+    <color name="agent_circle_bg">#030303</color>
+    <color name="agent_drawer_bg">#121215</color>
 </resources>
