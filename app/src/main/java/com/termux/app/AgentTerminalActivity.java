@@ -74,6 +74,11 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     private ViewTreeObserver.OnGlobalLayoutListener mLayoutListener;
     private int mFontSize;
 
+    // Step 12 (lag fix): repaint coalescing + colors/font reload caching.
+    private boolean mRepaintPending;
+    private long mColorsLoadedAt = -1;
+    private long mFontLoadedAt = -1;
+
     private final AgentSessionClient mSessionClient = new AgentSessionClient();
     private final AgentViewClient mViewClient = new AgentViewClient();
 
@@ -321,23 +326,34 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
     private void loadColorsAndFont() {
         try {
+            // Step 12: only re-read/re-apply when the files actually changed.
+            // setTypeface() recreates the terminal renderer, so calling this
+            // on every colors-changed callback was a steady source of jank.
             File colorsFile = TermuxConstants.TERMUX_COLOR_PROPERTIES_FILE;
-            Properties props = new Properties();
-            if (colorsFile.isFile()) {
-                try (InputStream in = new FileInputStream(colorsFile)) {
-                    props.load(in);
+            long colorsMod = colorsFile.isFile() ? colorsFile.lastModified() : 0;
+            if (colorsMod != mColorsLoadedAt) {
+                Properties props = new Properties();
+                if (colorsFile.isFile()) {
+                    try (InputStream in = new FileInputStream(colorsFile)) {
+                        props.load(in);
+                    }
                 }
-            }
-            TerminalColors.COLOR_SCHEME.updateWith(props);
-            if (mDisplayedSession != null && mDisplayedSession.getEmulator() != null) {
-                mDisplayedSession.getEmulator().mColors.reset();
+                TerminalColors.COLOR_SCHEME.updateWith(props);
+                if (mDisplayedSession != null && mDisplayedSession.getEmulator() != null) {
+                    mDisplayedSession.getEmulator().mColors.reset();
+                }
+                mColorsLoadedAt = colorsMod;
             }
             File fontFile = TermuxConstants.TERMUX_FONT_FILE;
-            Typeface typeface = (fontFile.exists() && fontFile.length() > 0)
-                ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
-            mTerminalView.setTypeface(typeface);
+            long fontMod = fontFile.exists() ? fontFile.lastModified() : 0;
+            if (fontMod != mFontLoadedAt) {
+                Typeface typeface = (fontFile.exists() && fontFile.length() > 0)
+                    ? Typeface.createFromFile(fontFile) : Typeface.MONOSPACE;
+                mTerminalView.setTypeface(typeface);
+                mFontLoadedAt = fontMod;
+            }
             mTerminalView.onScreenUpdated();
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
     }
 
@@ -391,9 +407,19 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         @Override
         public void onTextChanged(@NonNull TerminalSession changedSession) {
             try {
-                if (changedSession == mDisplayedSession && mTerminalView != null) {
-                    mTerminalView.onScreenUpdated();
-                }
+                // Step 12: coalesce repaints — heavy output (progress bars,
+                // long listings) fires this per chunk; repaint at most once
+                // per posted frame instead of once per chunk.
+                if (changedSession != mDisplayedSession || mTerminalView == null
+                    || mRepaintPending) return;
+                mRepaintPending = true;
+                mTerminalView.post(() -> {
+                    mRepaintPending = false;
+                    try {
+                        mTerminalView.onScreenUpdated();
+                    } catch (Throwable ignored) {
+                    }
+                });
             } catch (Throwable ignored) {
             }
         }
