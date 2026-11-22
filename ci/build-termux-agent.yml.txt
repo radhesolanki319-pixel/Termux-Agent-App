@@ -47,6 +47,14 @@ jobs:
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/99-termux-agent-setup.sh" etc/profile.d/
           mkdir -p etc/termux-agent
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/first-setup.sh" etc/termux-agent/
+          mv bin/dpkg bin/dpkg-real
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/dpkg-wrapper.sh" bin/dpkg
+          chmod 755 bin/dpkg
+          mkdir -p share/termux-agent etc/dpkg
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/dpkg-wrapper.sh" share/termux-agent/
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/restore-dpkg-wrapper.sh" share/termux-agent/
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/97-dpkg-wrapper-guard.sh" etc/profile.d/
+          printf 'post-invoke="/data/data/com.tagent/files/usr/share/termux-agent/restore-dpkg-wrapper.sh"\n' > etc/dpkg/dpkg.cfg
           zip -qr ../bootstrap-aarch64-agent.zip .
           cd ..
           NEW=$(sha256sum bootstrap-aarch64-agent.zip | awk '{print $1}')
