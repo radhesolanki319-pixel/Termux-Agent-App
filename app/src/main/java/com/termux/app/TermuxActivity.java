@@ -245,6 +245,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setTerminalToolbarView(savedInstanceState);
 
+        // Agent UI: purana session drawer naye design me kabhi nahi khulna chahiye.
+        // Sessions ab nayi Sessions screen se switch hote hain, isliye drawer ko
+        // hamesha locked-closed rakho — edge swipe se bhi nahi khulega.
+        getDrawer().setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+
         setSettingsButtonView();
 
         setNewSessionButtonView();
@@ -525,6 +530,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
         terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
+
+        // Agent UI: toolbar pager par horizontal swipe band karo — pager ko mile
+        // hue touch events yahi consume ho jayenge, isliye swipe se page nahi
+        // badlega. Extra keys ke buttons (child views) aur programmatic
+        // setCurrentItem() pehle ki tarah kaam karte rahenge.
+        terminalToolbarViewPager.setOnTouchListener((v, event) -> true);
     }
 
     private void setTerminalToolbarHeight() {

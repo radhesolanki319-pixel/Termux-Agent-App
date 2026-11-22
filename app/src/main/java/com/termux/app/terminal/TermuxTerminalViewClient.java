@@ -230,8 +230,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public void copyModeChanged(boolean copyMode) {
-        // Disable drawer while copying.
-        mActivity.getDrawer().setDrawerLockMode(copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
+        // Agent UI: drawer hamesha locked-closed rakho. Pehle copy mode khatm hone
+        // par yeh UNLOCKED ho jata tha, jisse purana session drawer swipe se phir
+        // khul sakta tha — ab lock copy mode ke baad bhi bana rahega.
+        mActivity.getDrawer().setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
     }
 
 

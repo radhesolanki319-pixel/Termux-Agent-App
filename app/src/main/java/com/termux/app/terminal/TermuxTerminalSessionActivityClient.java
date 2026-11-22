@@ -305,12 +305,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     void notifyOfSessionChange() {
-        if (!mActivity.isVisible()) return;
-
-        if (!mActivity.getProperties().areTerminalSessionChangeToastsDisabled()) {
-            TerminalSession session = mActivity.getCurrentSession();
-            mActivity.showToast(toToastTitle(session), false);
-        }
+        // Agent UI: session change par purana "[N] naam" wala toast pill nahi
+        // dikhana. Kaunsi session active hai yeh nayi Sessions screen se pata
+        // chalta hai, isliye yeh method jaanbujh kar khaali rakha gaya hai.
     }
 
     public void switchToSession(boolean forward) {
