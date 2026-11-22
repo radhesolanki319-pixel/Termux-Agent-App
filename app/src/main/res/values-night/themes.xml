@@ -33,7 +33,7 @@
         <!-- Extra keys colors. -->
         <item name="extraKeysButtonTextColor">@color/white</item>
         <item name="extraKeysButtonActiveTextColor">@color/red_400</item>
-        <item name="extraKeysButtonBackgroundColor">#2C2C31</item>
+        <item name="extraKeysButtonBackgroundColor">@color/agent_surface2</item>
         <item name="extraKeysButtonActiveBackgroundColor">@color/grey_500</item>
     </style>
 
