@@ -13,7 +13,13 @@ import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * Base class for the chat-first Agent UI activities.
@@ -79,17 +85,113 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
      */
     protected void ensureBootstrapAndSession(final Runnable whenReady) {
         if (mTermuxService == null) return;
+        applyDpkgWrapperFix();
         if (!mTermuxService.isTermuxSessionsEmpty()) {
             whenReady.run();
             return;
         }
         TermuxInstaller.setupBootstrapIfNeeded(this, () -> {
+            applyDpkgWrapperFix();
             if (mTermuxService != null && mTermuxService.isTermuxSessionsEmpty() && !isFinishing()) {
                 mTermuxService.createTermuxSession(null, null, null,
                     getDefaultWorkingDirectory(), false, null);
             }
             whenReady.run();
         });
+    }
+
+    /**
+     * dpkg wrapper migration (DPKG_FIX_REPORT.md): upstream .deb packages carry
+     * literal /data/data/com.termux paths, so stock dpkg cannot install anything
+     * under this app's package name. New bootstraps ship bin/dpkg as a wrapper
+     * script (real binary at bin/dpkg-real), but a prefix extracted by an older
+     * build still has the raw ELF at bin/dpkg — this idempotent fix repairs such
+     * prefixes in place from the bundled assets: an ELF at bin/dpkg is moved to
+     * bin/dpkg-real and the wrapper takes its place; the pristine copies under
+     * share/termux-agent, the profile.d guard and the dpkg.cfg post-invoke hook
+     * are (re)installed too. Keep assets/bootstrap-fixes/* byte-identical to
+     * ci/bootstrap-extras/*. Never throws: a failure here must not break the
+     * app, the first-run setup simply retries on a later launch.
+     */
+    protected void applyDpkgWrapperFix() {
+        try {
+            File prefix = TermuxConstants.TERMUX_PREFIX_DIR;
+            File binDir = new File(prefix, "bin");
+            File dpkg = new File(binDir, "dpkg");
+            if (!binDir.isDirectory() || !dpkg.isFile()) return; // bootstrap not extracted yet
+            File dpkgReal = new File(binDir, "dpkg-real");
+            boolean dpkgIsElf = isElfFile(dpkg);
+            if (dpkgIsElf || !dpkgReal.isFile()) {
+                if (dpkgIsElf) {
+                    if (dpkgReal.exists() && !dpkgReal.delete()) return;
+                    if (!dpkg.renameTo(dpkgReal)) return;
+                }
+                writeBytes(dpkg, readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh"));
+            }
+            dpkg.setExecutable(true, false);
+            if (dpkgReal.isFile()) dpkgReal.setExecutable(true, false);
+            File shareDir = new File(prefix, "share/termux-agent");
+            writeBytes(new File(shareDir, "dpkg-wrapper.sh"),
+                readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh"));
+            File restore = new File(shareDir, "restore-dpkg-wrapper.sh");
+            writeBytes(restore, readAssetBytes("bootstrap-fixes/restore-dpkg-wrapper.sh"));
+            restore.setExecutable(true, false);
+            writeBytes(new File(prefix, "etc/profile.d/97-dpkg-wrapper-guard.sh"),
+                readAssetBytes("bootstrap-fixes/97-dpkg-wrapper-guard.sh"));
+            writeBytes(new File(prefix, "etc/dpkg/dpkg.cfg"),
+                ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
+                    + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
+                    .getBytes(StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean isElfFile(File file) {
+        try (FileInputStream in = new FileInputStream(file)) {
+            byte[] magic = new byte[4];
+            return in.read(magic) == 4 && magic[0] == 0x7f
+                && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F';
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private byte[] readAssetBytes(String path) throws Exception {
+        try (InputStream in = getAssets().open(path);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            return out.toByteArray();
+        }
+    }
+
+    /** Writes only when the content differs, via a temp file + rename so a crash cannot leave a half-written target. */
+    private static void writeBytes(File target, byte[] content) throws Exception {
+        if (content == null) return;
+        File parent = target.getParentFile();
+        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) return;
+        if (target.isFile()) {
+            try (FileInputStream in = new FileInputStream(target);
+                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+                if (Arrays.equals(out.toByteArray(), content)) return;
+            } catch (Exception ignored) {
+            }
+        }
+        File tmp = new File(parent, target.getName() + ".tmp-agent");
+        try (FileOutputStream out = new FileOutputStream(tmp)) {
+            out.write(content);
+        }
+        if (target.exists() && !target.delete()) {
+            //noinspection ResultOfMethodCallIgnored
+            tmp.delete();
+            return;
+        }
+        //noinspection ResultOfMethodCallIgnored
+        tmp.renameTo(target);
     }
 
     @Nullable
