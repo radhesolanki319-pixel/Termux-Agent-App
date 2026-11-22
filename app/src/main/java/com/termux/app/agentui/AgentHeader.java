@@ -9,6 +9,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewOutlineProvider;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
@@ -25,6 +26,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
 
     private final Activity mActivity;
     private final TextureView mAvatarView;
+    private final ImageView mAvatarStill;
     private final TextView mNameView;
     private final TextView mStatusView;
 
@@ -32,12 +34,23 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     private Surface mSurface;
     private String mClip = "avatar/avatar_idle.mp4";
     private boolean mWorking;
+    private boolean mVideoEnabled = true;
 
     public AgentHeader(Activity activity) {
         mActivity = activity;
         mAvatarView = activity.findViewById(R.id.header_avatar);
+        mAvatarStill = activity.findViewById(R.id.header_avatar_still);
         mNameView = activity.findViewById(R.id.header_agent_name);
         mStatusView = activity.findViewById(R.id.header_agent_status);
+        if (mAvatarStill != null) {
+            mAvatarStill.setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
+                }
+            });
+            mAvatarStill.setClipToOutline(true);
+        }
         if (mAvatarView != null) {
             mAvatarView.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
@@ -52,6 +65,24 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
 
     public void setAgentName(String name) {
         if (mNameView != null) mNameView.setText(name);
+    }
+
+    /**
+     * Step 13: performance-heavy screens (the terminal) can switch the
+     * header avatar from the live video to the still image — same Jolly,
+     * no MediaPlayer decode and no TextureView composition cost.
+     */
+    public void setVideoEnabled(boolean enabled) {
+        mVideoEnabled = enabled;
+        if (!enabled) {
+            releasePlayer();
+            if (mAvatarView != null) mAvatarView.setVisibility(View.GONE);
+            if (mAvatarStill != null) mAvatarStill.setVisibility(View.VISIBLE);
+        } else {
+            if (mAvatarStill != null) mAvatarStill.setVisibility(View.GONE);
+            if (mAvatarView != null) mAvatarView.setVisibility(View.VISIBLE);
+            playCurrentClip();
+        }
     }
 
     /** Null/empty hides the status line — the pill shrinks to the name only. */
@@ -122,7 +153,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     }
 
     private void playCurrentClip() {
-        if (mSurface == null) return;
+        if (!mVideoEnabled || mSurface == null) return;
         releasePlayer();
         try {
             AssetFileDescriptor afd = mActivity.getAssets().openFd(mClip);

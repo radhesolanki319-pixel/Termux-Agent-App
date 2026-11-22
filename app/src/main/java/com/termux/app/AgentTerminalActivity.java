@@ -92,6 +92,10 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         }
 
         mHeader = new AgentHeader(this);
+        // Step 13: idle-terminal lag — the live avatar video (MediaPlayer +
+        // TextureView) is a continuous decode/composition cost this screen
+        // does not need; show the still Jolly here instead.
+        mHeader.setVideoEnabled(false);
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
@@ -222,11 +226,19 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
             mEmptyView.setVisibility(View.GONE);
             mErrorView.setVisibility(View.GONE);
             mTerminalView.setVisibility(View.VISIBLE);
+            // Step 13: no cursor-blinker loop and no scrollbar fade cycle on
+            // this screen — the cursor still renders, steady. Both were
+            // continuous main-thread work even with an idle shell.
             try {
-                TermuxAppSharedProperties props = TermuxAppSharedProperties.getProperties();
-                if (props != null
-                    && mTerminalView.setTerminalCursorBlinkerRate(props.getTerminalCursorBlinkRate()))
-                    mTerminalView.setTerminalCursorBlinkerState(true, true);
+                mTerminalView.setTerminalCursorBlinkerState(false, false);
+                mTerminalView.setVerticalScrollBarEnabled(false);
+            } catch (Throwable ignored) {
+            }
+            // Attach is done: the layout listener has no more work, remove
+            // it so it stops firing on every layout pass of this window.
+            try {
+                if (mLayoutListener != null)
+                    mTerminalView.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
             } catch (Throwable ignored) {
             }
 

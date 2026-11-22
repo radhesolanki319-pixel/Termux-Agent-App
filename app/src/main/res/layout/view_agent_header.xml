@@ -63,6 +63,15 @@
                 android:id="@+id/header_avatar"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
+
+            <ImageView
+                android:id="@+id/header_avatar_still"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="Agent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/agent_avatar"
+                android:visibility="gone" />
         </FrameLayout>
 
         <LinearLayout
