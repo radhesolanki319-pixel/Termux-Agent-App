@@ -35,6 +35,9 @@ jobs:
           echo "c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb  bootstrap-aarch64.zip" | sha256sum -c -
           mkdir x && cd x && unzip -q ../bootstrap-aarch64.zip
           grep -rlI '/data/data/com\.termux' . | while read -r f; do sed -i 's|/data/data/com\.termux|/data/data/com.termux.agent|g' "$f"; done
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/99-termux-agent-setup.sh" etc/profile.d/
+          mkdir -p etc/termux-agent
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/first-setup.sh" etc/termux-agent/
           zip -qr ../bootstrap-aarch64-agent.zip .
           cd ..
           NEW=$(sha256sum bootstrap-aarch64-agent.zip | awk '{print $1}')
