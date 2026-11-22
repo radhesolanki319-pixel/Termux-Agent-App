@@ -19,7 +19,7 @@
         <intent
             android:action="android.intent.action.RUN"
             android:targetPackage="com.tagent"
-            android:targetClass="com.tagent.app.TermuxActivity"
+            android:targetClass="com.termux.app.TermuxActivity"
             android:name="android.shortcut.conversation"/>
     </shortcut>
 
@@ -32,7 +32,7 @@
         <intent
             android:action="android.intent.action.RUN"
             android:targetPackage="com.tagent"
-            android:targetClass="com.tagent.app.TermuxActivity"
+            android:targetClass="com.termux.app.TermuxActivity"
             android:name="android.shortcut.conversation">
             <extra android:name="com.tagent.app.failsafe_session" android:value="true"/>
         </intent>
@@ -47,7 +47,7 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.tagent"
-            android:targetClass="com.tagent.app.activities.SettingsActivity"
+            android:targetClass="com.termux.app.activities.SettingsActivity"
             android:name="android.shortcut.conversation"/>
     </shortcut>
 
