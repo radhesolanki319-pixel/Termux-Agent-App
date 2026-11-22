@@ -43,6 +43,17 @@
             android:textColor="@color/agent_text_secondary"
             android:textSize="15sp"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/agent_terminal_error"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="6dp"
+            android:scrollbars="vertical"
+            android:textColor="@color/agent_text"
+            android:textSize="11sp"
+            android:typeface="monospace"
+            android:visibility="gone" />
     </FrameLayout>
 
     <com.termux.shared.termux.extrakeys.ExtraKeysView

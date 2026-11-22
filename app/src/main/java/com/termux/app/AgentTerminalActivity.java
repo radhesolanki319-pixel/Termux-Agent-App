@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.widget.TextView;
 
@@ -38,7 +39,10 @@ import org.json.JSONException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -62,8 +66,12 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     private TerminalView mTerminalView;
     private ExtraKeysView mExtraKeysView;
     private TextView mEmptyView;
+    private TextView mErrorView;
 
     private TerminalSession mDisplayedSession;
+    private TermuxSession mPendingWrapper;
+    private boolean mAttached;
+    private ViewTreeObserver.OnGlobalLayoutListener mLayoutListener;
     private int mFontSize;
 
     private final AgentSessionClient mSessionClient = new AgentSessionClient();
@@ -92,7 +100,19 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         mTerminalView = findViewById(R.id.agent_terminal_view);
         mTerminalView.setTerminalViewClient(mViewClient);
         mEmptyView = findViewById(R.id.agent_terminal_empty);
+        mErrorView = findViewById(R.id.agent_terminal_error);
         mExtraKeysView = findViewById(R.id.agent_extra_keys);
+
+        // Step 11: attach only once the view has a real (non-zero) size.
+        // Attaching at 0x0 left the view with a null emulator — a permanent
+        // black card — and the later size pass ran outside any guard.
+        mLayoutListener = () -> {
+            if (mPendingWrapper != null && !mAttached
+                && mTerminalView.getWidth() > 0 && mTerminalView.getHeight() > 0) {
+                doAttach(mPendingWrapper);
+            }
+        };
+        mTerminalView.getViewTreeObserver().addOnGlobalLayoutListener(mLayoutListener);
 
         TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
         mFontSize = prefs != null ? prefs.getFontSize() : 0;
@@ -117,7 +137,23 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (mDisplayedSession != null && mTerminalView != null) {
+            try {
+                mTerminalView.onScreenUpdated();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        try {
+            if (mTerminalView != null && mLayoutListener != null)
+                mTerminalView.getViewTreeObserver().removeOnGlobalLayoutListener(mLayoutListener);
+        } catch (Throwable ignored) {
+        }
         restoreDisplayedSessionClient();
         if (mHeader != null) mHeader.release();
         super.onDestroy();
@@ -135,20 +171,38 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         if (handle != null) {
             for (TermuxSession session : sessions) {
                 if (session.getTerminalSession() != null
+                    && session.getTerminalSession().isRunning()
                     && handle.equals(session.getTerminalSession().mHandle)) {
                     return session;
                 }
             }
         }
-        return sessions.get(sessions.size() - 1);
+        // Step 11: never hand out a dead session — attaching a corpse paints
+        // a black card. Fall back to the last session that is still alive.
+        for (int i = sessions.size() - 1; i >= 0; i--) {
+            TerminalSession candidate = sessions.get(i).getTerminalSession();
+            if (candidate != null && candidate.isRunning()) return sessions.get(i);
+        }
+        return null;
     }
 
     private void showSession(@NonNull TermuxSession wrapper) {
+        // Step 11: defer the attach until the TerminalView has a real size;
+        // the layout listener performs it on the first sized layout pass.
+        mPendingWrapper = wrapper;
+        mAttached = false;
+        if (mTerminalView.getWidth() > 0 && mTerminalView.getHeight() > 0) {
+            doAttach(wrapper);
+        }
+    }
+
+    private void doAttach(@NonNull TermuxSession wrapper) {
         // Defensive: a terminal attach hiccup must never crash the app —
-        // fall back to the empty state instead.
+        // report it on this screen itself and fall back to the empty state.
         try {
             TerminalSession session = wrapper.getTerminalSession();
-            if (session == null) {
+            if (session == null || !session.isRunning()) {
+                mPendingWrapper = null;
                 showEmptyState();
                 return;
             }
@@ -158,9 +212,18 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
             loadColorsAndFont();
             mTerminalView.attachSession(session);
+            mTerminalView.updateSize();
             mTerminalView.onScreenUpdated();
             mEmptyView.setVisibility(View.GONE);
+            mErrorView.setVisibility(View.GONE);
             mTerminalView.setVisibility(View.VISIBLE);
+            try {
+                TermuxAppSharedProperties props = TermuxAppSharedProperties.getProperties();
+                if (props != null
+                    && mTerminalView.setTerminalCursorBlinkerRate(props.getTerminalCursorBlinkRate()))
+                    mTerminalView.setTerminalCursorBlinkerState(true, true);
+            } catch (Throwable ignored) {
+            }
 
             TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
             if (prefs != null) prefs.setCurrentSession(session.mHandle);
@@ -168,9 +231,48 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
             mTerminalView.requestFocus();
             KeyboardUtils.showSoftKeyboard(this, mTerminalView);
-        } catch (Exception e) {
+            mAttached = true;
+            mPendingWrapper = null;
+        } catch (Throwable t) {
+            reportTerminalError(t);
             showEmptyState();
         }
+    }
+
+    /**
+     * Step 11 self-report: a terminal failure is written to
+     * ~/terminal_error.txt and shown inside the terminal card itself, so the
+     * exact cause is one screenshot away instead of buried in app-private
+     * storage the user cannot reach from the phone's file manager.
+     */
+    private void reportTerminalError(@NonNull Throwable t) {
+        final String trace;
+        try {
+            StringWriter sw = new StringWriter();
+            t.printStackTrace(new PrintWriter(sw));
+            trace = sw.toString();
+        } catch (Throwable ignored) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                File out = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, "terminal_error.txt");
+                try (FileOutputStream fos = new FileOutputStream(out, true)) {
+                    fos.write(("\n==== " + new java.util.Date() + " ====\n" + trace).getBytes());
+                }
+            } catch (Throwable ignored) {
+            }
+        }).start();
+        runOnUiThread(() -> {
+            try {
+                mTerminalView.setVisibility(View.GONE);
+                mEmptyView.setVisibility(View.GONE);
+                mErrorView.setText("Terminal me error aaya — is screen ka screenshot bhej do:\n\n"
+                    + (trace.length() > 4000 ? trace.substring(0, 4000) : trace));
+                mErrorView.setVisibility(View.VISIBLE);
+            } catch (Throwable ignored) {
+            }
+        });
     }
 
     private void showEmptyState() {
@@ -205,7 +307,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
                     showEmptyState();
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
     }
 
@@ -292,7 +394,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
                 if (changedSession == mDisplayedSession && mTerminalView != null) {
                     mTerminalView.onScreenUpdated();
                 }
-            } catch (Exception ignored) {
+            } catch (Throwable ignored) {
             }
         }
 
