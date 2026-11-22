@@ -45,7 +45,7 @@ public final class AgentSessionsActivity extends AgentBaseActivity {
         mHeader = new AgentHeader(this);
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         mListView = findViewById(R.id.session_list);
         mAdapter = new ArrayAdapter<TermuxSession>(this, R.layout.item_session_row, mShown) {
@@ -154,7 +154,7 @@ public final class AgentSessionsActivity extends AgentBaseActivity {
             TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
             if (prefs != null) prefs.setCurrentSession(session.getTerminalSession().mHandle);
         }
-        TermuxActivity.startTermuxActivity(this);
+        startActivity(new Intent(this, AgentTerminalActivity.class));
     }
 
     private void showSessionActions(final TermuxSession session) {

@@ -41,7 +41,7 @@ public final class AgentConnectActivity extends AgentBaseActivity {
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         mProviders = findViewById(R.id.connect_providers);
         mKeyInput = findViewById(R.id.connect_key);

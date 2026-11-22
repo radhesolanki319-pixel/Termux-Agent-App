@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/agent_bg"
+    android:orientation="vertical">
+
+    <include layout="@layout/view_agent_header" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="16dp"
+        android:text="@string/agent_terminal"
+        android:textColor="@color/agent_text"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="12dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_agent_terminal_card"
+        android:padding="10dp">
+
+        <com.termux.view.TerminalView
+            android:id="@+id/agent_terminal_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
+
+        <TextView
+            android:id="@+id/agent_terminal_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/agent_no_session"
+            android:textColor="@color/agent_text_secondary"
+            android:textSize="15sp"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <com.termux.shared.termux.extrakeys.ExtraKeysView
+        android:id="@+id/agent_extra_keys"
+        android:layout_width="match_parent"
+        android:layout_height="148dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:orientation="horizontal" />
+
+    <include layout="@layout/view_agent_bottom_bar" />
+</LinearLayout>

@@ -70,7 +70,7 @@ public final class AgentSimpleActivity extends AgentBaseActivity {
         mHeader = new AgentHeader(this);
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         TextView title = findViewById(R.id.simple_title);
         title.setText(isGoals() ? "Goals" : isFeed() ? "Feed" : "Ideas");

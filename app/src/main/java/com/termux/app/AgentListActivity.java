@@ -44,7 +44,7 @@ public final class AgentListActivity extends AgentBaseActivity {
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         ((TextView) findViewById(R.id.list_title)).setText(R.string.agent_agents);
 
@@ -139,7 +139,7 @@ public final class AgentListActivity extends AgentBaseActivity {
             TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
             if (prefs != null) prefs.setCurrentSession(session.getTerminalSession().mHandle);
         }
-        TermuxActivity.startTermuxActivity(this);
+        startActivity(new Intent(this, AgentTerminalActivity.class));
     }
 
     private void startAgent(final AgentStore.AgentDef def) {

@@ -783,7 +783,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         Resources res = getResources();
 
         // Set pending intent to be launched when notification is clicked
-        Intent notificationIntent = TermuxActivity.newInstance(this);
+        // The new Agent UI owns all terminal entry points; the notification
+        // opens the in-UI terminal screen, not the old TermuxActivity.
+        Intent notificationIntent = new Intent(this, AgentTerminalActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
 

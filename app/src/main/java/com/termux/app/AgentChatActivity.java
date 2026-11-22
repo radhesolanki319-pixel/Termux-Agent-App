@@ -305,12 +305,12 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
 
     private void openTerminalWithNewSession() {
         if (mTermuxService == null) {
-            TermuxActivity.startTermuxActivity(this);
+            startActivity(new Intent(this, AgentTerminalActivity.class));
             return;
         }
         ensureBootstrapAndSession(() -> {
             createSession(null);
-            TermuxActivity.startTermuxActivity(this);
+            startActivity(new Intent(this, AgentTerminalActivity.class));
         });
     }
 
@@ -320,7 +320,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
             TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(this);
             if (prefs != null) prefs.setCurrentSession(target.getTerminalSession().mHandle);
         }
-        TermuxActivity.startTermuxActivity(this);
+        startActivity(new Intent(this, AgentTerminalActivity.class));
     }
 
     @Override

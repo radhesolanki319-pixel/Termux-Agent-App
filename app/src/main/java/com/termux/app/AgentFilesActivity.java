@@ -49,7 +49,7 @@ public final class AgentFilesActivity extends AgentBaseActivity {
         mHeader = new AgentHeader(this);
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         mEmpty = findViewById(R.id.file_empty);
         mListView = findViewById(R.id.file_list);
@@ -131,7 +131,7 @@ public final class AgentFilesActivity extends AgentBaseActivity {
         new AlertDialog.Builder(this)
             .setTitle(f.getName())
             .setMessage((f.isDirectory() ? "Folder" : humanSize(f.length())) + "\n" + f.getAbsolutePath())
-            .setPositiveButton("Terminal kholo", (d, w) -> TermuxActivity.startTermuxActivity(this))
+            .setPositiveButton("Terminal kholo", (d, w) -> startActivity(new Intent(this, AgentTerminalActivity.class)))
             .setNegativeButton("Band", null)
             .show();
     }

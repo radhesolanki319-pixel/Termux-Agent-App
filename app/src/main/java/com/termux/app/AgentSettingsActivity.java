@@ -38,7 +38,7 @@ public final class AgentSettingsActivity extends AgentBaseActivity {
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> {
         });
-        mHeader.setOnNewSessionClick(v -> TermuxActivity.startTermuxActivity(this));
+        mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));
 
         mFontValue = findViewById(R.id.set_font_value);
         mProviderValue = findViewById(R.id.set_provider_value);
