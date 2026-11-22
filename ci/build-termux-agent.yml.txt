@@ -27,14 +27,22 @@ jobs:
           distribution: temurin
           java-version: '11'
 
-      - name: Custom bootstrap for com.termux.agent (aarch64)
+      - name: Custom bootstrap for com.tagent (aarch64)
         run: |
           set -e
           mkdir -p /tmp/boot && cd /tmp/boot
           curl -sL -o bootstrap-aarch64.zip "https://github.com/termux/termux-packages/releases/download/bootstrap-2025.03.28-r1%2Bapt-android-7/bootstrap-aarch64.zip"
           echo "c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb  bootstrap-aarch64.zip" | sha256sum -c -
           mkdir x && cd x && unzip -q ../bootstrap-aarch64.zip
-          grep -rlI '/data/data/com\.termux' . | while read -r f; do sed -i 's|/data/data/com\.termux|/data/data/com.termux.agent|g' "$f"; done
+          ORIG_COUNT=$(find . -type f | wc -l)
+          grep -rl 'com\.termux' . | while read -r f; do sed -i 's|com\.termux|com.tagent|g' "$f"; done
+          LEFT=$(grep -rl 'com\.termux' . | wc -l)
+          echo "Files still containing old package string: $LEFT"
+          [ "$LEFT" -eq 0 ]
+          [ "$(find . -type f | wc -l)" -eq "$ORIG_COUNT" ]
+          [ -z "$(find . -name '*com.termux*' -print -quit)" ]
+          readelf -d bin/bash | grep -q '/data/data/com.tagent/files/usr/lib'
+          echo "Bootstrap rewrite verified: RUNPATH + saare embedded path com.tagent par"
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/99-termux-agent-setup.sh" etc/profile.d/
           mkdir -p etc/termux-agent
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/first-setup.sh" etc/termux-agent/
@@ -63,4 +71,4 @@ jobs:
           APK=$(ls app/build/outputs/apk/debug/*arm64-v8a*.apk | head -1)
           echo "Publishing $APK"
           cp "$APK" Termux-Agent-App.apk
-          gh release create "$TAG" --title "Termux Agent App v1" --notes "Pehla test build: Termux Agent App (package com.termux.agent, custom aarch64 bootstrap). Debug signature — sirf test ke liye." Termux-Agent-App.apk || gh release upload "$TAG" Termux-Agent-App.apk --clobber
+          gh release create "$TAG" --title "Termux Agent App v1" --notes "Test build: Termux Agent App (package com.tagent, custom aarch64 bootstrap — binary-level rewrite, CI-verified). Pehli baar khulne par agent toolkit ka automatic setup chalega. Debug signature — sirf test ke liye." Termux-Agent-App.apk || gh release upload "$TAG" Termux-Agent-App.apk --clobber

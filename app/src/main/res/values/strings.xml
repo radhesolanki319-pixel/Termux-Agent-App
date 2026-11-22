@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!DOCTYPE resources [
-    <!ENTITY TERMUX_PACKAGE_NAME "com.termux.agent">
+    <!ENTITY TERMUX_PACKAGE_NAME "com.tagent">
     <!ENTITY TERMUX_APP_NAME "Termux Agent App">
     <!ENTITY TERMUX_API_APP_NAME "Termux Agent:API">
     <!ENTITY TERMUX_BOOT_APP_NAME "Termux Agent:Boot">

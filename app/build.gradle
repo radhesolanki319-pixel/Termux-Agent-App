@@ -45,7 +45,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.termux.agent"
+        applicationId "com.tagent"
         minSdk buildMinSdk
         targetSdk buildTargetSdk
         versionCode 1022
@@ -62,7 +62,7 @@ android {
                 project.ext.bootstrapMaxRelease ? "\"" + project.ext.bootstrapMaxRelease + "\"" : "null"
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux.agent"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.tagent"
         manifestPlaceholders.TERMUX_APP_NAME = "Termux Agent App"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux Agent:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux Agent:Boot"

@@ -1,4 +1,4 @@
-#!/data/data/com.termux.agent/files/usr/bin/bash
+#!/data/data/com.tagent/files/usr/bin/bash
 # Termux Agent App — first-run automatic setup.
 # Installs the agent toolkit, fetches the app's own source code and drops
 # an AGENT_README.md brief in $HOME. Runs once: the marker file is only
@@ -39,10 +39,10 @@ Tum "Termux Agent App" ke andar chal rahe ho — yeh Termux (0.119.0-beta.3)
 ka modified version hai jo khaas AI agents ke liye banaya gaya hai.
 
 ## Pehchan
-- App package: com.termux.agent (phone par lagi asli Termux, com.termux,
+- App package: com.tagent (phone par lagi asli Termux, com.termux,
   ek ALAG app hai — uske data ko haath mat lagana)
-- $PREFIX = /data/data/com.termux.agent/files/usr
-- $HOME   = /data/data/com.termux.agent/files/home
+- $PREFIX = /data/data/com.tagent/files/usr
+- $HOME   = /data/data/com.tagent/files/home
 
 ## App ka source code
 - Isi device par: ~/Termux-Agent-App

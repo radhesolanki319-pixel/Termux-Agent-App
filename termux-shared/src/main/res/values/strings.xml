@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!DOCTYPE resources [
-    <!ENTITY TERMUX_PACKAGE_NAME "com.termux.agent">
+    <!ENTITY TERMUX_PACKAGE_NAME "com.tagent">
     <!ENTITY TERMUX_APP_NAME "Termux Agent App">
     <!ENTITY TERMUX_API_APP_NAME "Termux Agent:API">
     <!ENTITY TERMUX_BOOT_APP_NAME "Termux Agent:Boot">
@@ -9,7 +9,7 @@
     <!ENTITY TERMUX_STYLING_APP_NAME "Termux Agent:Styling">
     <!ENTITY TERMUX_TASKER_APP_NAME "Termux Agent:Tasker">
     <!ENTITY TERMUX_WIDGET_APP_NAME "Termux Agent:Widget">
-    <!ENTITY TERMUX_PREFIX_DIR_PATH "/data/data/com.termux.agent/files/usr">
+    <!ENTITY TERMUX_PREFIX_DIR_PATH "/data/data/com.tagent/files/usr">
     ]>
 
 <resources>
