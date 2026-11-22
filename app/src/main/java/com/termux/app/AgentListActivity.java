@@ -1,5 +1,7 @@
 package com.termux.app;
 
+import com.termux.R;
+
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
