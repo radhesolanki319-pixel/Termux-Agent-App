@@ -27,7 +27,7 @@
             android:layout_marginEnd="10dp"
             android:layout_marginBottom="10dp"
             android:background="@drawable/bg_agent_terminal_card"
-            android:clipToOutline="true">
+           >
 
         <androidx.drawerlayout.widget.DrawerLayout
             android:id="@+id/drawer_layout"
