@@ -43,6 +43,7 @@ jobs:
           [ -z "$(find . -name '*com.termux*' -print -quit)" ]
           readelf -d bin/bash | grep -q '/data/data/com.tagent/files/usr/lib'
           echo "Bootstrap rewrite verified: RUNPATH + saare embedded path com.tagent par"
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/98-agent-provider.sh" etc/profile.d/
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/99-termux-agent-setup.sh" etc/profile.d/
           mkdir -p etc/termux-agent
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/first-setup.sh" etc/termux-agent/
