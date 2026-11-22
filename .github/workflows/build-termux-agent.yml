@@ -1,13 +1,16 @@
 name: Build Termux Agent App
 
+
 on:
   workflow_dispatch: {}
   push:
     branches:
       - main
 
+
 permissions:
   contents: write
+
 
 jobs:
   build:
@@ -16,16 +19,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+
       - name: Install SDK platform, build-tools and NDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-30" "build-tools;30.0.3" "ndk;22.1.7171670"
+
 
       - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '11'
+
 
       - name: Custom bootstrap for com.tagent (aarch64)
         run: |
@@ -43,6 +49,7 @@ jobs:
           [ -z "$(find . -name '*com.termux*' -print -quit)" ]
           readelf -d bin/bash | grep -q '/data/data/com.tagent/files/usr/lib'
           echo "Bootstrap rewrite verified: RUNPATH + saare embedded path com.tagent par"
+          cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/98-agent-provider.sh" etc/profile.d/
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/99-termux-agent-setup.sh" etc/profile.d/
           mkdir -p etc/termux-agent
           cp "$GITHUB_WORKSPACE/ci/bootstrap-extras/first-setup.sh" etc/termux-agent/
@@ -54,21 +61,13 @@ jobs:
           sed -i "s|c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb|$NEW|" "$GITHUB_WORKSPACE/app/build.gradle"
           grep -n 'downloadBootstrap("aarch64"' "$GITHUB_WORKSPACE/app/build.gradle"
 
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
+
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: termux-agent-app-apk
           path: app/build/outputs/apk/debug/*.apk
-
-      - name: Publish release with aarch64 APK
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="agent-v1"
-          APK=$(ls app/build/outputs/apk/debug/*arm64-v8a*.apk | head -1)
-          echo "Publishing $APK"
-          cp "$APK" Termux-Agent-App.apk
-          gh release create "$TAG" --title "Termux Agent App v1" --notes "Test build: Termux Agent App (package com.tagent, custom aarch64 bootstrap — binary-level rewrite, CI-verified). Pehli baar khulne par agent toolkit ka automatic setup chalega. Debug signature — sirf test ke liye." Termux-Agent-App.apk || gh release upload "$TAG" Termux-Agent-App.apk --clobber
