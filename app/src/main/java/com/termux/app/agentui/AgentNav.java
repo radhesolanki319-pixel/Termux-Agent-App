@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.app.AgentChatActivity;
 import com.termux.app.AgentFilesActivity;
 import com.termux.app.AgentSimpleActivity;
-import com.termux.app.R;
+import com.termux.R;
 
 /** Wires the shared 5-icon bottom bar: Chat, Files, Ideas, Goals, Menu (grid). */
 public final class AgentNav {

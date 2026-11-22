@@ -13,7 +13,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 
-import com.termux.app.R;
+import com.termux.R;
 
 /**
  * The shared floating header: circular LIVE avatar (video, circle-clipped) with the

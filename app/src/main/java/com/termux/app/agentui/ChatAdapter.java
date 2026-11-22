@@ -14,7 +14,7 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
-import com.termux.app.R;
+import com.termux.R;
 
 import java.util.List;
 
