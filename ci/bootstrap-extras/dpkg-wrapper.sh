@@ -71,6 +71,18 @@ for a in "$@"; do
                         log "FAIL extract ke baad data/data/com.termux dir nahi mila: $a"
                     else
                         mv "$root/data/data/com.termux" "$root/data/data/com.tagent"
+                        # Termux .deb ke maintainer scripts control.tar me 0644
+                        # mode ke saath aate hain; dpkg-deb -R unhe waisa hi
+                        # nikalta hai aur dpkg-deb --build bina exec permission
+                        # wale scripts ko reject kar deta hai (build fail ->
+                        # original .deb pass -> stat Permission denied).
+                        # Asal dpkg install ke samay khud chmod karta hai;
+                        # yahan build se pehle wahi fix-up karo.
+                        for s in preinst postinst prerm postrm config; do
+                            if [ -f "$root/DEBIAN/$s" ]; then
+                                chmod 755 "$root/DEBIAN/$s" 2>/dev/null
+                            fi
+                        done
                         grep -rl 'com\.termux' "$root" 2>/dev/null | while IFS= read -r f; do
                             sed -i 's|com\.termux|com.tagent|g' "$f"
                         done
