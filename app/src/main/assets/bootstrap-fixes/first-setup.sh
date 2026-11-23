@@ -49,8 +49,8 @@ if ! command -v git >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends git || pkg install -y git || true
 fi
 
-echo "[2/4] Node.js runtime install ho raha hai..."
-apt-get install -y --no-install-recommends nodejs || pkg install -y nodejs || true
+echo "[2/4] Node.js runtime & npm install ho raha hai..."
+apt-get install -y --no-install-recommends nodejs npm || pkg install -y nodejs npm || true
 
 echo "[3/4] Python runtime install ho raha hai..."
 apt-get install -y --no-install-recommends python || pkg install -y python || true
