@@ -123,6 +123,9 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         + "    if [ ! -f \"$HOME/.claude.json\" ]; then\n"
         + "      printf '{\"installMethod\":\"npm\",\"autoUpdates\":false,\"hasCompletedOnboarding\":true,\"customApiKeyResponses\":{\"approved\":[\"81054c627e6f78875206\"],\"rejected\":[]}}\\n' > \"$HOME/.claude.json\" 2>/dev/null\n"
         + "    fi\n"
+        + "    if command -v jq >/dev/null 2>&1; then\n"
+        + "      T=$(mktemp) && jq --arg p \"$WORK\" '.projects[$p]=((.projects[$p]//{})+{hasTrustDialogAccepted:true})' \"$HOME/.claude.json\" > \"$T\" 2>/dev/null && mv \"$T\" \"$HOME/.claude.json\"\n"
+        + "    fi\n"
         + "    REPLY=\"\"\n"
         + "    if [ -x \"$PREFIX/bin/claude\" ]; then\n"
         + "      REPLY=$(timeout 30 \"$PREFIX/bin/claude\" -p --continue < \"$MSG\" 2>&1)\n"
@@ -295,9 +298,10 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
     @Override
     protected void onPause() {
         // Screen foreground me nahi to working-tick bhi band (battery, Step 16);
-        // header video ka pause base class sambhalti hai.
+        // header video ka pause base class sambhalti hai. Reply-poll chalta
+        // rehta hai jab tak jawab pending hai — warna dusri screen par jaate
+        // hi aaya hua jawab gum ho jata tha (Step 24).
         mHandler.removeCallbacks(mWorkTick);
-        mHandler.removeCallbacks(mReplyPoll);
         super.onPause();
     }
 
@@ -316,6 +320,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         ensureBootstrapAndSession(() -> {
             refreshIdleStatus();
             ensureChatInfra();
+            recoverPendingReplies();
         });
         // Ek hi exception (Step 17): dpkg fix fail hua ho to uski report chat
         // me khud dikhe — success par koi card nahi, chat saaf rehti hai.
@@ -493,6 +498,49 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
     private void fireNextQueued() {
         String next = mQueue.poll();
         if (next != null) fireRequest(next);
+    }
+
+    /**
+     * Pichhle atke hue jawabon ki recovery (Step 24): chat band hone ya app
+     * marne se koi jawab file me pada reh gaya ho to chat khulte hi khud
+     * bubble ban jaye — user ko terminal me kuch chalane ki zaroorat nahi.
+     * Bohot purani adhoori request (bina .done) ka jo hissa jawab aaya ho
+     * woh dikha kar saaf kar do, taaki kataar hamesha ke liye na atke.
+     */
+    private void recoverPendingReplies() {
+        try {
+            File dir = chatDir();
+            File[] files = dir.listFiles();
+            if (files == null) return;
+            long now = System.currentTimeMillis();
+            for (File f : files) {
+                String name = f.getName();
+                if (!name.endsWith(".done")) continue;
+                String id = name.substring(0, name.length() - ".done".length());
+                if (id.equals(mPendingId)) continue;
+                String out = readTextFile(new File(dir, id + ".out"));
+                cleanupChatFiles(id);
+                deliverReply(out);
+            }
+            for (File f : files) {
+                String name = f.getName();
+                if (!name.endsWith(".msg")) continue;
+                String id = name.substring(0, name.length() - ".msg".length());
+                if (id.equals(mPendingId)) continue;
+                if (new File(dir, id + ".done").isFile()) continue;
+                long age = now - f.lastModified();
+                if (age <= REPLY_TIMEOUT_MS) continue; // abhi chal rahi ho sakti hai
+                String out = readTextFile(new File(dir, id + ".out"));
+                cleanupChatFiles(id);
+                if (cleanReply(out).isEmpty()) {
+                    addMessage(ChatMessage.result("Pichhla jawab adhoora reh gaya",
+                        "Agent ne samay par jawab nahi diya — apna message phir se bhejo", null));
+                } else {
+                    deliverReply(out);
+                }
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     /** Agent ka asli jawab bubble me — terminal ke ANSI rang saaf karke. */

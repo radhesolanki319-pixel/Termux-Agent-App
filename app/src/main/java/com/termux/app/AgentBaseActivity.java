@@ -204,6 +204,11 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
                     readAssetBytes("bootstrap-fixes/97-dpkg-wrapper-guard.sh"));
                 writeBytes(new File(prefix, "etc/profile.d/96-dpkg-hold.sh"),
                     readAssetBytes("bootstrap-fixes/96-dpkg-hold.sh"));
+                // Step 24: Claude Code self-repair one-shot — galat (native
+                // binary) version lag jaye to shell khulte hi khud 2.1.112 par
+                // wapas. User ko koi command chalane ki zaroorat nahi.
+                writeBytes(new File(prefix, "etc/profile.d/95-claude-repair.sh"),
+                    readAssetBytes("bootstrap-fixes/95-claude-repair.sh"));
                 writeBytes(new File(prefix, "etc/dpkg/dpkg.cfg"),
                     ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
                         + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
