@@ -41,8 +41,8 @@ echo "Package repository update ho raha hai..."
 pkg update -y || apt-get update -y || true
 
 # --- Granular, Resilient Installation ---
-echo "[1/4] Core bootstrap tools (git, curl, jq) install ho rahe hain..."
-apt-get install -y --no-install-recommends git curl jq || pkg install -y git curl jq || true
+echo "[1/4] Core bootstrap tools (openssl, curl, git, jq) install ho rahe hain..."
+apt-get install -y --no-install-recommends openssl libcurl ca-certificates git jq || true
 
 if ! command -v git >/dev/null 2>&1; then
     echo "Retrying git installation individually..."
