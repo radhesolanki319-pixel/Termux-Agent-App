@@ -249,10 +249,26 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
     @Nullable
     private TermuxSession chatTargetSession() {
         if (mTermuxService == null) return null;
-        TermuxSession named = findSessionByName(AgentStore.getCurrentAgent(this));
+        String currentAgent = AgentStore.getCurrentAgent(this);
+        TermuxSession named = findSessionByName(currentAgent);
         if (named != null) return named;
         List<TermuxSession> all = mTermuxService.getTermuxSessions();
-        return all.isEmpty() ? null : all.get(all.size() - 1);
+        for (int i = all.size() - 1; i >= 0; i--) {
+            TerminalSession ts = all.get(i).getTerminalSession();
+            if (ts != null && ts.isRunning()
+                    && (ts.mSessionName == null || ts.mSessionName.isEmpty())) {
+                return all.get(i);
+            }
+        }
+        // Aakhri fallback: koi bhi chalta session — message chup-chaap
+        // gum hone se behtar hai ki woh kisi live session me jaye.
+        for (int i = all.size() - 1; i >= 0; i--) {
+            TerminalSession ts = all.get(i).getTerminalSession();
+            if (ts != null && ts.isRunning()) {
+                return all.get(i);
+            }
+        }
+        return null;
     }
 
     private void addMessage(ChatMessage message) {
@@ -350,6 +366,9 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
             case "New chat":
                 mMessages.clear();
                 mAdapter.notifyDataSetChanged();
+                mWorkingSince = 0;
+                mHeader.setWorking(false);
+                mHeader.setStatus(null);
                 break;
             case "Main chat":
                 break;

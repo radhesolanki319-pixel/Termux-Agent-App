@@ -2,6 +2,9 @@ package com.termux.app.agentui;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
+
+import com.termux.BuildConfig;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,7 +49,8 @@ public final class AgentStore {
                 JSONObject o = arr.getJSONObject(i);
                 out.add(new AgentDef(o.getString("name"), o.optString("command", ""), false));
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            if (BuildConfig.DEBUG) Log.w("AgentStore", "Failed to parse custom_agents", e);
         }
         return out;
     }

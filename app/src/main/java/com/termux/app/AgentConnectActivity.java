@@ -123,6 +123,9 @@ public final class AgentConnectActivity extends AgentBaseActivity {
     }
 
     private static String escape(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$");
+        return value.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("$", "\\$")
+                    .replace("`", "\\`");
     }
 }

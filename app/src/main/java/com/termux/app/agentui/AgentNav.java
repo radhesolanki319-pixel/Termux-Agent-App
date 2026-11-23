@@ -34,27 +34,27 @@ public final class AgentNav {
         ImageButton menu = activity.findViewById(R.id.nav_menu);
         if (chat == null) return;
 
-        tint(activity, chat, current == Screen.CHAT);
-        tint(activity, files, current == Screen.FILES);
-        tint(activity, ideas, current == Screen.IDEAS);
-        tint(activity, goals, current == Screen.GOALS);
-        tint(activity, menu, current == Screen.MENU);
+        if (chat != null) tint(activity, chat, current == Screen.CHAT);
+        if (files != null) tint(activity, files, current == Screen.FILES);
+        if (ideas != null) tint(activity, ideas, current == Screen.IDEAS);
+        if (goals != null) tint(activity, goals, current == Screen.GOALS);
+        if (menu != null) tint(activity, menu, current == Screen.MENU);
 
-        chat.setOnClickListener(v -> {
+        if (chat != null) chat.setOnClickListener(v -> {
             if (current != Screen.CHAT) go(activity, new Intent(activity, AgentChatActivity.class));
         });
-        files.setOnClickListener(v -> {
+        if (files != null) files.setOnClickListener(v -> {
             if (current != Screen.FILES) go(activity, new Intent(activity, AgentFilesActivity.class));
         });
-        ideas.setOnClickListener(v -> {
+        if (ideas != null) ideas.setOnClickListener(v -> {
             if (current != Screen.IDEAS)
                 go(activity, AgentSimpleActivity.intent(activity, AgentSimpleActivity.MODE_IDEAS));
         });
-        goals.setOnClickListener(v -> {
+        if (goals != null) goals.setOnClickListener(v -> {
             if (current != Screen.GOALS)
                 go(activity, AgentSimpleActivity.intent(activity, AgentSimpleActivity.MODE_GOALS));
         });
-        menu.setOnClickListener(v -> {
+        if (menu != null) menu.setOnClickListener(v -> {
             if (current != Screen.MENU) go(activity, new Intent(activity, AgentListActivity.class));
         });
     }

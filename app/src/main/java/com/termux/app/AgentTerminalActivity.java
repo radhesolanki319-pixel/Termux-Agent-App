@@ -75,12 +75,15 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     private int mFontSize;
 
     // Step 12 (lag fix): repaint coalescing + colors/font reload caching.
-    private boolean mRepaintPending;
+    private volatile boolean mRepaintPending;
     private long mColorsLoadedAt = -1;
     private long mFontLoadedAt = -1;
 
     private final AgentSessionClient mSessionClient = new AgentSessionClient();
     private final AgentViewClient mViewClient = new AgentViewClient();
+
+    // Cached cursor style to avoid SharedPreferences I/O on session thread
+    private Integer mCachedCursorStyle;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -135,6 +138,8 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
     @Override
     protected void onServiceReady() {
+        // Preload cursor style cache to avoid SharedPreferences I/O on session thread
+        mCachedCursorStyle = loadCursorStyle();
         ensureBootstrapAndSession(() -> {
             loadColorsAndFont();
             TermuxSession current = storedOrLastSession();
@@ -149,6 +154,8 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Refresh cursor style cache on resume (properties may have changed)
+        mCachedCursorStyle = loadCursorStyle();
         if (mDisplayedSession != null && mTerminalView != null) {
             try {
                 mTerminalView.onScreenUpdated();
@@ -252,6 +259,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
             mAttached = true;
             mPendingWrapper = null;
         } catch (Throwable t) {
+            mPendingWrapper = null;
             reportTerminalError(t);
             showEmptyState();
         }
@@ -337,11 +345,25 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
     // ---------------------------------------------------------------- styling
 
+    /** Loads cursor style from SharedPreferences (called on UI thread). */
+    private Integer loadCursorStyle() {
+        try {
+            TermuxAppSharedProperties props = TermuxAppSharedProperties.getProperties();
+            if (props != null) return props.getTerminalCursorStyle();
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
     private void loadColorsAndFont() {
         try {
             // Step 12: only re-read/re-apply when the files actually changed.
             // setTypeface() recreates the terminal renderer, so calling this
             // on every colors-changed callback was a steady source of jank.
+            // (CC audit ne isse background thread par bhejne ki koshish ki thi
+            // — Muse review me revert: mod-time cache ki wajah se repeat call
+            // pehle se hi sasti hai, aur async version font ka MONOSPACE
+            // fallback kho deta tha + pehla paint purane rang se hota tha.)
             File colorsFile = TermuxConstants.TERMUX_COLOR_PROPERTIES_FILE;
             long colorsMod = colorsFile.isFile() ? colorsFile.lastModified() : 0;
             if (colorsMod != mColorsLoadedAt) {
@@ -477,12 +499,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
 
         @Override
         public Integer getTerminalCursorStyle() {
-            try {
-                TermuxAppSharedProperties props = TermuxAppSharedProperties.getProperties();
-                if (props != null) return props.getTerminalCursorStyle();
-            } catch (Exception ignored) {
-            }
-            return super.getTerminalCursorStyle();
+            return mCachedCursorStyle;
         }
     }
 

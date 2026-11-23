@@ -17,6 +17,7 @@ import com.termux.app.agentui.AgentStore;
 import com.termux.shared.termux.TermuxConstants;
 
 import java.io.File;
+import java.util.Set;
 
 /** Settings screen for the Agent UI layer. Every row is backed by something real. */
 public final class AgentSettingsActivity extends AgentBaseActivity {
@@ -100,11 +101,21 @@ public final class AgentSettingsActivity extends AgentBaseActivity {
     }
 
     private static long dirSize(File dir) {
+        return dirSize(dir, new java.util.HashSet<String>());
+    }
+    private static long dirSize(File dir, Set<String> visited) {
+        String canon;
+        try {
+            canon = dir.getCanonicalPath();
+        } catch (Exception e) {
+            return 0;
+        }
+        if (!visited.add(canon)) return 0; // cycle detected
         long total = 0;
         File[] files = dir.listFiles();
         if (files == null) return total;
         for (File f : files) {
-            if (f.isDirectory()) total += dirSize(f);
+            if (f.isDirectory()) total += dirSize(f, visited);
             else total += f.length();
         }
         return total;

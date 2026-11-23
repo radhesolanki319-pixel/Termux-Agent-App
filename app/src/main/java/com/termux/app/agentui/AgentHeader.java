@@ -36,6 +36,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     private boolean mWorking;
     private boolean mVideoEnabled = true;
     private boolean mPausedByHost;
+    private final Object mSurfaceLock = new Object();
 
     public AgentHeader(Activity activity) {
         mActivity = activity;
@@ -131,8 +132,10 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
-        mSurface = new Surface(surfaceTexture);
-        playCurrentClip();
+        synchronized (mSurfaceLock) {
+            mSurface = new Surface(surfaceTexture);
+            playCurrentClipLocked();
+        }
     }
 
     @Override
@@ -141,10 +144,12 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
 
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
-        releasePlayer();
-        if (mSurface != null) {
-            mSurface.release();
-            mSurface = null;
+        synchronized (mSurfaceLock) {
+            releasePlayerLocked();
+            if (mSurface != null) {
+                mSurface.release();
+                mSurface = null;
+            }
         }
         return true;
     }
@@ -154,8 +159,14 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     }
 
     private void playCurrentClip() {
+        synchronized (mSurfaceLock) {
+            playCurrentClipLocked();
+        }
+    }
+
+    private void playCurrentClipLocked() {
         if (!mVideoEnabled || mSurface == null) return;
-        releasePlayer();
+        releasePlayerLocked();
         try {
             AssetFileDescriptor afd = mActivity.getAssets().openFd(mClip);
             MediaPlayer player = new MediaPlayer();
@@ -175,8 +186,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
         }
     }
 
-    private void releasePlayer() {
-        mPausedByHost = false;
+    private void releasePlayerLocked() {
         if (mPlayer != null) {
             try {
                 mPlayer.stop();
@@ -184,6 +194,13 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
             }
             mPlayer.release();
             mPlayer = null;
+        }
+        mPausedByHost = false;
+    }
+
+    private void releasePlayer() {
+        synchronized (mSurfaceLock) {
+            releasePlayerLocked();
         }
     }
 
@@ -194,24 +211,28 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
      * wahin se resume; surface khatm ho gaya ho to naya player khud banta hai.
      */
     public void onHostPause() {
-        if (mPlayer != null) {
-            try {
-                if (mPlayer.isPlaying()) {
-                    mPlayer.pause();
-                    mPausedByHost = true;
+        synchronized (mSurfaceLock) {
+            if (mPlayer != null) {
+                try {
+                    if (mPlayer.isPlaying()) {
+                        mPlayer.pause();
+                        mPausedByHost = true;
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
             }
         }
     }
 
     public void onHostResume() {
-        if (!mPausedByHost) return;
-        mPausedByHost = false;
-        if (mPlayer != null) {
-            try {
-                mPlayer.start();
-            } catch (Exception ignored) {
+        synchronized (mSurfaceLock) {
+            if (!mPausedByHost) return;
+            mPausedByHost = false;
+            if (mPlayer != null) {
+                try {
+                    mPlayer.start();
+                } catch (Exception ignored) {
+                }
             }
         }
     }

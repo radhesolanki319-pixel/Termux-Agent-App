@@ -102,21 +102,27 @@ public final class AgentFilesActivity extends AgentBaseActivity {
     }
 
     private void refresh() {
-        mFiles.clear();
-        File home = new File(TermuxConstants.TERMUX_HOME_DIR_PATH);
-        File[] listed = home.listFiles();
-        if (listed != null) {
-            Arrays.sort(listed, (a, b) -> {
-                if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
-                return a.getName().compareToIgnoreCase(b.getName());
-            });
-            for (File f : listed) {
-                if (mMediaOnly && !isMedia(f)) continue;
-                mFiles.add(f);
+        new Thread(() -> {
+            File home = new File(TermuxConstants.TERMUX_HOME_DIR_PATH);
+            File[] listed = home.listFiles();
+            final ArrayList<File> sorted = new ArrayList<>();
+            if (listed != null) {
+                Arrays.sort(listed, (a, b) -> {
+                    if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
+                    return a.getName().compareToIgnoreCase(b.getName());
+                });
+                for (File f : listed) {
+                    if (mMediaOnly && !isMedia(f)) continue;
+                    sorted.add(f);
+                }
             }
-        }
-        mEmpty.setVisibility(mFiles.isEmpty() ? View.VISIBLE : View.GONE);
-        mAdapter.notifyDataSetChanged();
+            runOnUiThread(() -> {
+                mFiles.clear();
+                mFiles.addAll(sorted);
+                mEmpty.setVisibility(mFiles.isEmpty() ? View.VISIBLE : View.GONE);
+                mAdapter.notifyDataSetChanged();
+            });
+        }).start();
     }
 
     private boolean isMedia(File f) {

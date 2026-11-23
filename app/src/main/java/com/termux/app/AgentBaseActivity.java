@@ -5,10 +5,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.termux.BuildConfig;
 import com.termux.app.agentui.AgentHeader;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -18,7 +20,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -108,7 +113,6 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
      */
     protected void ensureBootstrapAndSession(final Runnable whenReady) {
         if (mTermuxService == null) return;
-        applyDpkgWrapperFix();
         if (!mTermuxService.isTermuxSessionsEmpty()) {
             whenReady.run();
             return;
@@ -149,70 +153,83 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
     /** Aakhri dpkg-fix ki report; bin/dpkg healthy wrapper ho to null. */
     static volatile String sLastDpkgFixReport;
 
+    /** Process-wide lock for dpkg fix — prevents races when multiple screens
+     *  hit onServiceConnected simultaneously (e.g., app resumes to Terminal). */
+    private static final Object sDpkgFixLock = new Object();
+
     protected void applyDpkgWrapperFix() {
-        StringBuilder report = new StringBuilder();
-        try {
-            File prefix = TermuxConstants.TERMUX_PREFIX_DIR;
-            File binDir = new File(prefix, "bin");
-            File dpkg = new File(binDir, "dpkg");
-            if (!binDir.isDirectory() || !dpkg.isFile()) return; // bootstrap not extracted yet
-            File dpkgReal = new File(binDir, "dpkg-real");
-            byte[] wrapperBytes = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
-            if (isElfFile(dpkg)) {
-                // Wrapper gayab hai (dpkg self-upgrade): pehle stock binary ko
-                // streams se dpkg-real me copy karke verify karo, phir wrapper
-                // ko bin/dpkg me seedha (truncate-in-place) likho. Delete/rename
-                // par bharosa nahi — device par repair wahi atakta raha hai,
-                // aur purani chup-chaap catch wajah bhi chhupa deti thi.
-                report.append("bin/dpkg par stock binary tha (wrapper gayab)\n");
-                if (!copyFileVerified(dpkg, dpkgReal)) {
-                    report.append("FAIL: stock binary dpkg-real me copy nahi hua\n");
-                } else if (!writeFileDirect(dpkg, wrapperBytes)) {
-                    report.append("FAIL: bin/dpkg par wrapper nahi likha gaya\n");
-                }
-            } else if (dpkgReal.isFile() && isElfFile(dpkgReal)) {
-                // Wrapper script pehle se hai: asset me nayi version ho to
-                // refresh karo (sirf tab, jab maujud file hamari hi ho).
-                byte[] current = readFileBytes(dpkg);
-                if (current != null && !Arrays.equals(current, wrapperBytes)
-                    && new String(current, StandardCharsets.UTF_8).contains("Termux Agent App")) {
-                    writeBytes(dpkg, wrapperBytes);
-                }
-            } else {
-                report.append("FAIL: dpkg-real missing hai ya binary nahi hai\n");
-            }
-            dpkg.setExecutable(true, false);
-            if (dpkgReal.isFile()) dpkgReal.setExecutable(true, false);
-            File shareDir = new File(prefix, "share/termux-agent");
-            writeBytes(new File(shareDir, "dpkg-wrapper.sh"), wrapperBytes);
-            File restore = new File(shareDir, "restore-dpkg-wrapper.sh");
-            writeBytes(restore, readAssetBytes("bootstrap-fixes/restore-dpkg-wrapper.sh"));
-            restore.setExecutable(true, false);
-            writeBytes(new File(prefix, "etc/profile.d/97-dpkg-wrapper-guard.sh"),
-                readAssetBytes("bootstrap-fixes/97-dpkg-wrapper-guard.sh"));
-            writeBytes(new File(prefix, "etc/profile.d/96-dpkg-hold.sh"),
-                readAssetBytes("bootstrap-fixes/96-dpkg-hold.sh"));
-            writeBytes(new File(prefix, "etc/dpkg/dpkg.cfg"),
-                ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
-                    + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
-                    .getBytes(StandardCharsets.UTF_8));
-            // Antim jaanch — bin/dpkg ab script (#!) hai ya nahi. Healthy ho to
-            // report saaf; warna report chat card + file dono me jayegi (Step 17).
-            byte[] head = readFirstBytes(dpkg, 2);
-            if (head != null && head[0] == '#' && head[1] == '!') {
-                sLastDpkgFixReport = null;
-            } else {
-                report.append("FAIL: antim jaanch — bin/dpkg ab bhi script nahi hai\n");
-                sLastDpkgFixReport = report.toString();
-                writeReportFile(sLastDpkgFixReport);
-            }
-        } catch (Exception e) {
-            report.append("EXCEPTION: ").append(e.getClass().getSimpleName())
-                .append(": ").append(String.valueOf(e.getMessage())).append('\n');
-            sLastDpkgFixReport = report.toString();
+        synchronized (sDpkgFixLock) {
+            StringBuilder report = new StringBuilder();
             try {
-                writeReportFile(sLastDpkgFixReport);
-            } catch (Exception ignored) {
+                File prefix = TermuxConstants.TERMUX_PREFIX_DIR;
+                File binDir = new File(prefix, "bin");
+                File dpkg = new File(binDir, "dpkg");
+                if (!binDir.isDirectory() || !dpkg.isFile()) {
+                    if (BuildConfig.DEBUG) Log.d("AgentBase", "dpkg fix: bootstrap not ready yet");
+                    return; // bootstrap not extracted yet
+                }
+                File dpkgReal = new File(binDir, "dpkg-real");
+                byte[] wrapperBytes = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
+                if (isElfFile(dpkg)) {
+                    // Wrapper gayab hai (dpkg self-upgrade): pehle stock binary ko
+                    // streams se dpkg-real me copy karke verify karo, phir wrapper
+                    // ko bin/dpkg me seedha (truncate-in-place) likho. Delete/rename
+                    // par bharosa nahi — device par repair wahi atakta raha hai,
+                    // aur purani chup-chaap catch wajah bhi chhupa deti thi.
+                    report.append("bin/dpkg par stock binary tha (wrapper gayab)\n");
+                    if (!copyFileVerified(dpkg, dpkgReal)) {
+                        report.append("FAIL: stock binary dpkg-real me copy nahi hua\n");
+                    } else if (!writeFileDirect(dpkg, wrapperBytes)) {
+                        report.append("FAIL: bin/dpkg par wrapper nahi likha gaya\n");
+                    }
+                } else if (dpkgReal.isFile() && isElfFile(dpkgReal)) {
+                    // Wrapper script pehle se hai: asset me nayi version ho to
+                    // refresh karo (sirf tab, jab maujud file hamari hi ho).
+                    byte[] current = readFileBytes(dpkg);
+                    if (current != null && !Arrays.equals(current, wrapperBytes)
+                        && new String(current, StandardCharsets.UTF_8).contains("Termux Agent App")) {
+                        writeBytes(dpkg, wrapperBytes);
+                    }
+                } else {
+                    report.append("FAIL: dpkg-real missing hai ya binary nahi hai\n");
+                }
+                dpkg.setExecutable(true, false);
+                if (dpkgReal.isFile()) dpkgReal.setExecutable(true, false);
+                File shareDir = new File(prefix, "share/termux-agent");
+                writeBytes(new File(shareDir, "dpkg-wrapper.sh"), wrapperBytes);
+                File restore = new File(shareDir, "restore-dpkg-wrapper.sh");
+                writeBytes(restore, readAssetBytes("bootstrap-fixes/restore-dpkg-wrapper.sh"));
+                restore.setExecutable(true, false);
+                writeBytes(new File(prefix, "etc/profile.d/97-dpkg-wrapper-guard.sh"),
+                    readAssetBytes("bootstrap-fixes/97-dpkg-wrapper-guard.sh"));
+                writeBytes(new File(prefix, "etc/profile.d/96-dpkg-hold.sh"),
+                    readAssetBytes("bootstrap-fixes/96-dpkg-hold.sh"));
+                writeBytes(new File(prefix, "etc/dpkg/dpkg.cfg"),
+                    ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
+                        + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
+                        .getBytes(StandardCharsets.UTF_8));
+                // Antim jaanch — bin/dpkg ab script (#!) hai ya nahi. Healthy ho to
+                // report saaf; warna report chat card + file dono me jayegi (Step 17).
+                byte[] head = readFirstBytes(dpkg, 2);
+                if (head != null && head[0] == '#' && head[1] == '!') {
+                    sLastDpkgFixReport = null;
+                } else {
+                    report.append("FAIL: antim jaanch — bin/dpkg ab bhi script nahi hai\n");
+                    sLastDpkgFixReport = report.toString();
+                    writeReportFile(sLastDpkgFixReport);
+                }
+            } catch (Exception e) {
+                // Chat card me chhoti report (class + message); pura stack
+                // trace sirf file me — chat me code ki deewar nahi (user rule).
+                report.append("EXCEPTION: ").append(e.getClass().getSimpleName())
+                    .append(": ").append(String.valueOf(e.getMessage())).append('\n');
+                sLastDpkgFixReport = report.toString();
+                try {
+                    StringWriter sw = new StringWriter();
+                    e.printStackTrace(new PrintWriter(sw));
+                    writeReportFile(sLastDpkgFixReport + "\n" + sw.toString());
+                } catch (Exception ignored) {
+                }
             }
         }
     }
@@ -241,8 +258,16 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
 
     /** Copy ke baad verify bhi: destination pura ELF hai ya nahi. */
     private static boolean copyFileVerified(File src, File dst) {
-        return copyFile(src, dst) && dst.isFile()
-            && dst.length() == src.length() && isElfFile(dst);
+        if (!copyFile(src, dst) || !dst.isFile()
+                || dst.length() != src.length() || !isElfFile(dst)) {
+            return false;
+        }
+        // Byte-for-byte jaanch. Arrays.equals ka range-wala version API 30
+        // me nahi hai, isliye puri file compare karo — yeh rasta sirf tab
+        // chalta hai jab wrapper gayab ho, aur binary <1MB hai.
+        byte[] a = readFileBytes(src);
+        byte[] b = readFileBytes(dst);
+        return a != null && b != null && Arrays.equals(a, b);
     }
 
     /** Chhoti file ko truncate-in-place likho — koi delete/rename nahi. */
@@ -296,7 +321,11 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
     private static void writeBytes(File target, byte[] content) throws Exception {
         if (content == null) return;
         File parent = target.getParentFile();
-        if (parent != null && !parent.isDirectory() && !parent.mkdirs()) return;
+        if (parent != null && !parent.isDirectory()) {
+            if (!parent.mkdirs()) {
+                throw new IOException("mkdirs failed for " + parent);
+            }
+        }
         if (target.isFile()) {
             try (FileInputStream in = new FileInputStream(target);
                  ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -307,7 +336,7 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
             } catch (Exception ignored) {
             }
         }
-        File tmp = new File(parent, target.getName() + ".tmp-agent");
+        File tmp = File.createTempFile(target.getName() + "-", "-agent", parent);
         try (FileOutputStream out = new FileOutputStream(tmp)) {
             out.write(content);
         }
