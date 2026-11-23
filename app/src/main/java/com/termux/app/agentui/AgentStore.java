@@ -40,9 +40,9 @@ public final class AgentStore {
 
     public static List<AgentDef> getAgents(Context ctx) {
         List<AgentDef> out = new ArrayList<>();
+        out.add(new AgentDef("Antigravity", "antigravity", true));
         out.add(new AgentDef("Claude", "claude", true));
         out.add(new AgentDef("Hermes", "hermes", true));
-        out.add(new AgentDef("Antigravity", "antigravity", true));
         try {
             JSONArray arr = new JSONArray(prefs(ctx).getString("custom_agents", "[]"));
             for (int i = 0; i < arr.length(); i++) {
@@ -81,7 +81,7 @@ public final class AgentStore {
     }
 
     public static String getCurrentAgent(Context ctx) {
-        return prefs(ctx).getString("current_agent", "Claude");
+        return prefs(ctx).getString("current_agent", "Antigravity");
     }
 
     public static void setCurrentAgent(Context ctx, String name) {

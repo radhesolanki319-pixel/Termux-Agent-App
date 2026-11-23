@@ -19,7 +19,7 @@ _tagent_claude_repair() {
     fi
     command -v npm >/dev/null 2>&1 || return 0
     echo "Claude Code ka sahi (JS) version lagaya ja raha hai — sirf ek baar lagega..."
-    if npm install -g --force @anthropic-ai/claude-code@2.1.112 >/dev/null 2>&1; then
+    if npm install -g --force @anthropic-ai/claude-code@2.1.111 >/dev/null 2>&1; then
         mkdir -p "$HOME/.termux-agent" 2>/dev/null
         touch "$_marker" 2>/dev/null
         echo "Claude Code repair ho gaya."

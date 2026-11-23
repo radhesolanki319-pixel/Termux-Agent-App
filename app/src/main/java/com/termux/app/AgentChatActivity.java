@@ -172,25 +172,29 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         + "      echo \"$REPLY\"\n"
         + "    fi ;;\n"
         + "  antigravity)\n"
-        + "    if command -v antigravity >/dev/null 2>&1; then\n"
-        + "      timeout 900 antigravity -p \"$(cat \"$MSG\")\"\n"
-        + "    elif command -v agy >/dev/null 2>&1; then\n"
-        + "      timeout 900 agy -p \"$(cat \"$MSG\")\"\n"
-        + "    else\n"
+        + "    REPLY=\"\"\n"
+        + "    if [ -x \"$PREFIX/bin/antigravity\" ]; then\n"
+        + "      REPLY=$(timeout 30 \"$PREFIX/bin/antigravity\" -p \"$(cat \"$MSG\")\" 2>&1)\n"
+        + "    elif [ -x \"$PREFIX/bin/agy\" ]; then\n"
+        + "      REPLY=$(timeout 30 \"$PREFIX/bin/agy\" -p \"$(cat \"$MSG\")\" 2>&1)\n"
+        + "    fi\n"
+        + "    if [ -z \"$REPLY\" ] || echo \"$REPLY\" | grep -qiE \"login|auth|error|not found|cannot locate|GLIBC\"; then\n"
         + "      KEY=\"${FREELLM_API_KEY:-freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206}\"\n"
         + "      Q=$(cat \"$MSG\")\n"
-        + "      SYSTEM=\"You are Antigravity Agent in Termux Agent App on Boss's iQOO Neo 10. Reply strictly in Roman Hinglish to Boss (Radhe Solanki). Keep cool at 34-35C, zero background daemons.\"\n"
-        + "      PAYLOAD=$(jq -n --arg sys \"$SYSTEM\" --arg q \"$Q\" '{\"model\":\"auto\",\"messages\":[{\"role\":\"system\",\"content\":$sys},{\"role\":\"user\",\"content\":$q}]}' 2>/dev/null)\n"
-        + "      RESP=$(curl -s --connect-timeout 10 -m 45 -X POST \"https://freellmapi-backup.onrender.com/v1/chat/completions\" \\\n"
+        + "      SYSTEM=\"You are Antigravity, a powerful agentic AI assistant designed by Google DeepMind running on Boss's iQOO Neo 10 (Android 15). Reply strictly in Roman Hinglish to Boss (Radhe Solanki). Keep cool at 34-35C, zero background daemons.\"\n"
+        + "      PAYLOAD=$(jq -n --arg sys \"$SYSTEM\" --arg q \"$Q\" '{\"model\":\"gemini-3.8-flash\",\"messages\":[{\"role\":\"system\",\"content\":$sys},{\"role\":\"user\",\"content\":$q}]}' 2>/dev/null)\n"
+        + "      RESP=$(curl -s --connect-timeout 8 -m 35 -X POST \"https://freellmapi-backup.onrender.com/v1/chat/completions\" \\\n"
         + "        -H \"Content-Type: application/json\" \\\n"
         + "        -H \"Authorization: Bearer $KEY\" \\\n"
         + "        -d \"$PAYLOAD\" 2>/dev/null)\n"
-        + "      REPLY=$(echo \"$RESP\" | jq -r '.choices[0].message.content // empty' 2>/dev/null)\n"
-        + "      if [ -n \"$REPLY\" ]; then\n"
-        + "        echo \"$REPLY\"\n"
+        + "      API_TEXT=$(echo \"$RESP\" | jq -r '.choices[0].message.content // empty' 2>/dev/null)\n"
+        + "      if [ -n \"$API_TEXT\" ]; then\n"
+        + "        echo \"$API_TEXT\"\n"
         + "      else\n"
-        + "        echo \"Boss, Antigravity API se connection nahi mila. Network ya key check karo.\"\n"
+        + "        echo \"Boss, Antigravity API connection timeout ho gaya. Internet check karo.\"\n"
         + "      fi\n"
+        + "    else\n"
+        + "      echo \"$REPLY\"\n"
         + "    fi ;;\n"
         + "  *)\n"
         + "    if command -v \"$AGENT\" >/dev/null 2>&1; then\n"
@@ -440,7 +444,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         }
         if (cmd == null || cmd.isEmpty()) cmd = name.toLowerCase(java.util.Locale.US);
         cmd = cmd.trim().split("\\s+")[0];
-        if (!cmd.matches("[A-Za-z0-9._-]+")) cmd = "claude";
+        if (!cmd.matches("[A-Za-z0-9._-]+")) cmd = "antigravity";
         return cmd;
     }
 
