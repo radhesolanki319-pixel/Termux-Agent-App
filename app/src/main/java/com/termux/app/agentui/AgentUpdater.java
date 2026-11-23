@@ -111,7 +111,11 @@ public final class AgentUpdater {
                 }
             }
         }
-        if (bestUrl == null) {
+        // agent-v1 fallback sirf purane (pre-versioning, code < 2001) installs
+        // ke liye: woh ek baar latest build par aa jayein. Versioned install par
+        // yeh chalega to har check me nakli "update" dikhega (endless loop),
+        // isliye guard zaroori hai.
+        if (bestUrl == null && BuildConfig.VERSION_CODE < 2001) {
             for (int i = 0; i < releases.length(); i++) {
                 JSONObject rel = releases.getJSONObject(i);
                 String tag = rel.optString("tag_name", "");
