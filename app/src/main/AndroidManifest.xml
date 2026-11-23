@@ -114,45 +114,45 @@
 
         <activity
             android:name=".app.AgentListActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 
         <activity
             android:name=".app.AgentSessionsActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 
         <activity
             android:name=".app.AgentTerminalActivity"
             android:configChanges="orientation|screenSize|smallestScreenSize|density|screenLayout|uiMode|keyboard|keyboardHidden|navigation"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".app.AgentFilesActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 
         <activity
             android:name=".app.AgentSimpleActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 
         <activity
             android:name=".app.AgentSettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 
         <activity
             android:name=".app.AgentConnectActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.AgentUI" />
 

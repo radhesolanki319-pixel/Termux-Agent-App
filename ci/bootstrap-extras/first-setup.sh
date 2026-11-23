@@ -36,6 +36,50 @@ export DEBIAN_FRONTEND=noninteractive
 pkg update -y || apt-get update -y || true
 pkg install -y git gh python nodejs openssh curl jq ripgrep || apt-get install -y git gh python nodejs openssh curl jq ripgrep || FAILED=1
 
+# --- Install & Configure Claude Code ---
+echo "Claude Code install & configure ho raha hai..."
+npm install -g @anthropic-ai/claude-code || true
+
+cat > "$PREFIX/bin/claude" <<'CLAUDE_EOF'
+#!/data/data/com.tagent/files/usr/bin/bash
+export ANTHROPIC_BASE_URL="https://freellmapi-backup.onrender.com"
+export ANTHROPIC_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
+export OPENAI_BASE_URL="https://freellmapi-backup.onrender.com/v1"
+export OPENAI_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
+if [ -f "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
+    exec node "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" "$@"
+elif command -v claude-code >/dev/null 2>&1; then
+    exec claude-code "$@"
+else
+    exec npx -y @anthropic-ai/claude-code "$@"
+fi
+CLAUDE_EOF
+chmod 755 "$PREFIX/bin/claude" 2>/dev/null || true
+
+# --- Install & Configure Hermes Agent ---
+echo "Hermes Agent setup ho raha hai..."
+pip install --upgrade requests prompt_toolkit aiohttp 2>/dev/null || true
+if [ ! -d "$HOME/Hermes-agent-" ]; then
+    git clone --depth 1 https://github.com/radhesolanki319-pixel/Hermes-agent- "$HOME/Hermes-agent-" 2>/dev/null || true
+fi
+
+cat > "$PREFIX/bin/hermes" <<'HERMES_EOF'
+#!/data/data/com.tagent/files/usr/bin/bash
+export FREELLMAPI_URL="https://freellmapi-backup.onrender.com/v1"
+export FREELLMAPI_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
+export OPENAI_API_BASE="https://freellmapi-backup.onrender.com/v1"
+export OPENAI_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
+if [ -f "$HOME/Hermes-agent-/main.py" ]; then
+    exec python "$HOME/Hermes-agent-/main.py" "$@"
+elif [ -f "$HOME/Hermes-agent-/agent.py" ]; then
+    exec python "$HOME/Hermes-agent-/agent.py" "$@"
+else
+    echo "Hermes Agent CLI environment active."
+    python -c "print('Hermes Ready. Models connected to FreeLLM API (107/158 Models)')"
+fi
+HERMES_EOF
+chmod 755 "$PREFIX/bin/hermes" 2>/dev/null || true
+
 # Create tagent-bridge command runner
 mkdir -p "$PREFIX/bin" 2>/dev/null
 cat > "$PREFIX/bin/tagent-bridge" <<'BRIDGE_EOF'

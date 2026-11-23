@@ -133,7 +133,7 @@ public final class AgentStore {
     // ---------- connect ----------
 
     public static String getProvider(Context ctx) {
-        return prefs(ctx).getString("provider", "OpenRouter");
+        return prefs(ctx).getString("provider", "FreeLLM");
     }
 
     public static void setProvider(Context ctx, String provider) {
@@ -141,7 +141,7 @@ public final class AgentStore {
     }
 
     public static String getApiKey(Context ctx) {
-        return prefs(ctx).getString("api_key", "");
+        return prefs(ctx).getString("api_key", "freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206");
     }
 
     public static void setApiKey(Context ctx, String key) {
