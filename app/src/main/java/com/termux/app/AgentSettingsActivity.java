@@ -2,6 +2,7 @@ package com.termux.app;
 
 import com.termux.R;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Switch;
@@ -14,6 +15,7 @@ import com.termux.app.activities.SettingsActivity;
 import com.termux.app.agentui.AgentHeader;
 import com.termux.app.agentui.AgentNav;
 import com.termux.app.agentui.AgentStore;
+import com.termux.app.agentui.AgentUpdater;
 import com.termux.shared.termux.TermuxConstants;
 
 import java.io.File;
@@ -28,6 +30,7 @@ public final class AgentSettingsActivity extends AgentBaseActivity {
     private TextView mFontValue;
     private TextView mProviderValue;
     private TextView mStorageValue;
+    private TextView mUpdateValue;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -65,11 +68,39 @@ public final class AgentSettingsActivity extends AgentBaseActivity {
         findViewById(R.id.set_row_provider).setOnClickListener(v ->
             startActivity(new Intent(this, AgentConnectActivity.class)));
 
+        mUpdateValue = findViewById(R.id.set_update_value);
+        findViewById(R.id.set_row_update).setOnClickListener(v -> checkForUpdate());
+
         findViewById(R.id.set_open_advanced).setOnClickListener(v ->
             startActivity(new Intent(this, SettingsActivity.class)));
 
         AgentNav.wire(this, AgentNav.Screen.MENU, null);
         computeStorageAsync();
+    }
+
+    /** Self-update check (Hermes app wala pattern): naya v<code> release ho to seedha download + installer. */
+    private void checkForUpdate() {
+        if (mUpdateValue != null) mUpdateValue.setText("Check ho raha hai…");
+        AgentUpdater.check(result -> {
+            if (isFinishing()) return;
+            if (result.updateAvailable) {
+                if (mUpdateValue != null) mUpdateValue.setText("Naya hai: v" + result.versionCode);
+                new AlertDialog.Builder(this)
+                    .setTitle("Naya update taiyaar hai")
+                    .setMessage("Version v" + result.versionCode + " aa gaya hai. "
+                        + "Download karke installer khol du?")
+                    .setPositiveButton("Update karo", (d, w) ->
+                        AgentUpdater.downloadAndInstall(this, result.apkUrl))
+                    .setNegativeButton("Baad me", null)
+                    .show();
+            } else if (result.error != null) {
+                if (mUpdateValue != null) mUpdateValue.setText("Check fail");
+                Toast.makeText(this, "Update check fail: " + result.error, Toast.LENGTH_LONG).show();
+            } else {
+                if (mUpdateValue != null) mUpdateValue.setText("Latest hai");
+                Toast.makeText(this, "Tumhara app sabse latest hai", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

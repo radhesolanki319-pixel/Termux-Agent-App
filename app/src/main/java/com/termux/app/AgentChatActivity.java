@@ -28,6 +28,7 @@ import com.termux.app.activities.SettingsActivity;
 import com.termux.app.agentui.AgentHeader;
 import com.termux.app.agentui.AgentNav;
 import com.termux.app.agentui.AgentStore;
+import com.termux.app.agentui.AgentUpdater;
 import com.termux.app.agentui.ChatAdapter;
 import com.termux.app.agentui.ChatMessage;
 import com.termux.shared.termux.TermuxConstants;
@@ -270,6 +271,25 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         if (sLastDpkgFixReport != null) {
             addMessage(ChatMessage.result("Package fix fail ho gaya", sLastDpkgFixReport, null));
         }
+        checkUpdateSilently();
+    }
+
+    // ---------- self update (chat card, process me ek hi baar) ----------
+
+    private static boolean sUpdateCardShown;
+    private ChatMessage mUpdateCard;
+    private String mUpdateUrl;
+
+    private void checkUpdateSilently() {
+        if (sUpdateCardShown) return;
+        sUpdateCardShown = true;
+        AgentUpdater.check(result -> {
+            if (isFinishing() || !result.updateAvailable) return;
+            mUpdateUrl = result.apkUrl;
+            mUpdateCard = ChatMessage.result("Naya update hai",
+                "Version v" + result.versionCode + " taiyaar hai", "Update karo");
+            addMessage(mUpdateCard);
+        });
     }
 
     // ---------- chat flow ----------
@@ -564,7 +584,11 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
     @Override
     public void onCardAction(ChatMessage message, String action) {
         if ("result".equals(action)) {
-            openTerminalForCurrentSession();
+            if (message == mUpdateCard && mUpdateUrl != null) {
+                AgentUpdater.downloadAndInstall(this, mUpdateUrl);
+            } else {
+                openTerminalForCurrentSession();
+            }
         }
     }
 

@@ -146,6 +146,33 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/set_row_update"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_agent_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="18dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="App update"
+                    android:textColor="@color/agent_text"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/set_update_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Check karo"
+                    android:textColor="@color/agent_text_secondary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="10dp"
