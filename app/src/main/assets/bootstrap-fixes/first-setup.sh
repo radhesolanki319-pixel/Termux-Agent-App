@@ -60,6 +60,22 @@ apt-get install -y --no-install-recommends openssh ripgrep gh || pkg install -y 
 
 # --- Install & Configure Claude Code ---
 echo "Claude Code configure ho raha hai..."
+if [ ! -f "$HOME/.claude.json" ]; then
+    cat > "$HOME/.claude.json" <<'CONFIG_EOF'
+{
+  "installMethod": "npm",
+  "autoUpdates": false,
+  "hasCompletedOnboarding": true,
+  "customApiKeyResponses": {
+    "approved": [
+      "81054c627e6f78875206"
+    ],
+    "rejected": []
+  }
+}
+CONFIG_EOF
+fi
+
 if command -v npm >/dev/null 2>&1; then
     DISABLE_AUTOUPDATER=1 npm install -g --force @anthropic-ai/claude-code@2.1.112 2>/dev/null || true
 fi
