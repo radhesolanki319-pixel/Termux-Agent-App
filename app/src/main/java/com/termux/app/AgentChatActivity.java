@@ -58,7 +58,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
 
     private static final String[] DRAWER_ITEMS = {
         "New chat", "Main chat", "Feed", "Ideas", "Goals", "Library",
-        "Agents", "Sessions", "Terminal", "Connect", "Settings"
+        "Agents", "Sessions", "Terminal", "Connect", "Settings", "Check Update"
     };
 
     private AgentHeader mHeader;
@@ -136,7 +136,20 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         + "    elif command -v agy >/dev/null 2>&1; then\n"
         + "      timeout 900 agy -p \"$(cat \"$MSG\")\"\n"
         + "    else\n"
-        + "      echo \"__ERR__ Antigravity abhi is app me taiyaar nahi hai.\"\n"
+        + "      KEY=\"${FREELLM_API_KEY:-freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206}\"\n"
+        + "      Q=$(cat \"$MSG\")\n"
+        + "      SYSTEM=\"You are Antigravity Agent in Termux Agent App on Boss's iQOO Neo 10. Reply strictly in Roman Hinglish to Boss (Radhe Solanki). Keep cool at 34-35C, zero background daemons.\"\n"
+        + "      PAYLOAD=$(jq -n --arg sys \"$SYSTEM\" --arg q \"$Q\" '{\"model\":\"auto\",\"messages\":[{\"role\":\"system\",\"content\":$sys},{\"role\":\"user\",\"content\":$q}]}' 2>/dev/null)\n"
+        + "      RESP=$(curl -s --connect-timeout 10 -m 45 -X POST \"https://freellmapi-backup.onrender.com/v1/chat/completions\" \\\n"
+        + "        -H \"Content-Type: application/json\" \\\n"
+        + "        -H \"Authorization: Bearer $KEY\" \\\n"
+        + "        -d \"$PAYLOAD\" 2>/dev/null)\n"
+        + "      REPLY=$(echo \"$RESP\" | jq -r '.choices[0].message.content // empty' 2>/dev/null)\n"
+        + "      if [ -n \"$REPLY\" ]; then\n"
+        + "        echo \"$REPLY\"\n"
+        + "      else\n"
+        + "        echo \"Boss, Antigravity API se connection nahi mila. Network ya key check karo.\"\n"
+        + "      fi\n"
         + "    fi ;;\n"
         + "  *)\n"
         + "    if command -v \"$AGENT\" >/dev/null 2>&1; then\n"
@@ -631,6 +644,17 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
                 break;
             case "Settings":
                 startActivity(new Intent(this, AgentSettingsActivity.class));
+                break;
+            case "Check Update":
+                AgentUpdater.check(res -> {
+                    if (res.updateAvailable && res.apkUrl != null) {
+                        AgentUpdater.downloadAndInstall(this, res.apkUrl);
+                    } else if (res.error != null) {
+                        Toast.makeText(this, "Update check error: " + res.error, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "App up-to-date hai Boss!", Toast.LENGTH_SHORT).show();
+                    }
+                });
                 break;
             default:
                 break;

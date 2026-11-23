@@ -64,6 +64,13 @@ jobs:
           sed -i "s|c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb|$NEW|" "$GITHUB_WORKSPACE/app/build.gradle"
           grep -n 'downloadBootstrap("aarch64"' "$GITHUB_WORKSPACE/app/build.gradle"
 
+      - name: Set build version code
+        run: |
+          VC=$((2000 + GITHUB_RUN_NUMBER))
+          sed -i -E "s/^([[:space:]]*)versionCode [0-9]+/\1versionCode $VC/" app/build.gradle
+          grep -n "versionCode" app/build.gradle | head -2
+          echo "VC=$VC" >> "$GITHUB_ENV"
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -82,3 +89,5 @@ jobs:
           echo "Publishing $APK"
           cp "$APK" Termux-Agent-App.apk
           gh release create "$TAG" --title "Termux Agent App v1" --notes "Test build: Termux Agent App (package com.tagent, custom aarch64 bootstrap — binary-level rewrite, CI-verified). Pehli baar khulne par agent toolkit ka automatic setup chalega. Debug signature — sirf test ke liye." Termux-Agent-App.apk || gh release upload "$TAG" Termux-Agent-App.apk --clobber
+          echo "Versioned release bhi banao (app ke self-update ke liye): v$VC"
+          gh release create "v$VC" --title "Termux Agent App v$VC" --notes "Auto build v$VC (self-update release)." Termux-Agent-App.apk || gh release upload "v$VC" Termux-Agent-App.apk --clobber

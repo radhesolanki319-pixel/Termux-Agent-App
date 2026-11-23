@@ -111,6 +111,26 @@ public final class AgentUpdater {
                 }
             }
         }
+        if (bestUrl == null) {
+            for (int i = 0; i < releases.length(); i++) {
+                JSONObject rel = releases.getJSONObject(i);
+                String tag = rel.optString("tag_name", "");
+                if ("agent-v1".equals(tag)) {
+                    JSONArray assets = rel.optJSONArray("assets");
+                    if (assets == null) continue;
+                    for (int j = 0; j < assets.length(); j++) {
+                        JSONObject asset = assets.getJSONObject(j);
+                        String name = asset.optString("name", "");
+                        if (name.endsWith(".apk")) {
+                            bestUrl = asset.optString("browser_download_url", null);
+                            bestCode = 2001;
+                            break;
+                        }
+                    }
+                    if (bestUrl != null) break;
+                }
+            }
+        }
         if (bestUrl != null) return new Result(true, bestCode, bestUrl, null);
         return new Result(false, BuildConfig.VERSION_CODE, null, null);
     }
