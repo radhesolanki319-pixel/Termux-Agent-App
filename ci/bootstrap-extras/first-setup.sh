@@ -61,7 +61,7 @@ apt-get install -y --no-install-recommends openssh ripgrep gh || pkg install -y 
 # --- Install & Configure Claude Code ---
 echo "Claude Code configure ho raha hai..."
 if command -v npm >/dev/null 2>&1; then
-    npm install -g @anthropic-ai/claude-code 2>/dev/null || true
+    DISABLE_AUTOUPDATER=1 npm install -g @anthropic-ai/claude-code@2.1.112 2>/dev/null || true
 fi
 
 mkdir -p "$PREFIX/bin" 2>/dev/null
@@ -71,12 +71,15 @@ export ANTHROPIC_BASE_URL="https://freellmapi-backup.onrender.com"
 export ANTHROPIC_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
 export OPENAI_BASE_URL="https://freellmapi-backup.onrender.com/v1"
 export OPENAI_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
+export DISABLE_AUTOUPDATER=1
 if [ -f "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
     exec node "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" "$@"
+elif [ -f "$PREFIX/lib/node_modules/@xurxuo/claude-code-termux/cli-wrapper.cjs" ]; then
+    exec node "$PREFIX/lib/node_modules/@xurxuo/claude-code-termux/cli-wrapper.cjs" "$@"
 elif command -v claude-code >/dev/null 2>&1; then
     exec claude-code "$@"
 else
-    exec npx -y @anthropic-ai/claude-code "$@"
+    exec npx -y @anthropic-ai/claude-code@2.1.112 "$@"
 fi
 CLAUDE_EOF
 chmod 755 "$PREFIX/bin/claude" 2>/dev/null || true
