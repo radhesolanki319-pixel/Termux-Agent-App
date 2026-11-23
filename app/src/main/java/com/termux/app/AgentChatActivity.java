@@ -31,6 +31,7 @@ import com.termux.app.agentui.AgentStore;
 import com.termux.app.agentui.ChatAdapter;
 import com.termux.app.agentui.ChatMessage;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalSession;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 import java.util.ArrayList;
