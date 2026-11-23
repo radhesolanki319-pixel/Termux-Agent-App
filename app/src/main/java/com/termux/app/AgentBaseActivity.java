@@ -129,8 +129,11 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
      * under this app's package name. New bootstraps ship bin/dpkg as a wrapper
      * script (real binary at bin/dpkg-real), but a prefix extracted by an older
      * build still has the raw ELF at bin/dpkg — this idempotent fix repairs such
-     * prefixes in place from the bundled assets: an ELF at bin/dpkg is moved to
-     * bin/dpkg-real and the wrapper takes its place; the pristine copies under
+     * prefixes in place from the bundled assets: an ELF at bin/dpkg is
+     * stream-copied to bin/dpkg-real (no delete/rename — that path proved
+     * unreliable on-device) and the wrapper is written into bin/dpkg in
+     * place; the outcome is verified, and a failure is reported verbatim
+     * (chat card + ~/dpkg_fix_report.txt) instead of being swallowed; the pristine copies under
      * share/termux-agent, the profile.d guard and the dpkg.cfg post-invoke hook
      * are (re)installed too. Also (re)installs the 96-dpkg-hold.sh profile.d
      * one-shot, which puts the dpkg package itself on apt hold so a dpkg
@@ -143,42 +146,45 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
      * Never throws: a failure here must not break the app, the first-run
      * setup simply retries on a later launch.
      */
+    /** Aakhri dpkg-fix ki report; bin/dpkg healthy wrapper ho to null. */
+    static volatile String sLastDpkgFixReport;
+
     protected void applyDpkgWrapperFix() {
+        StringBuilder report = new StringBuilder();
         try {
             File prefix = TermuxConstants.TERMUX_PREFIX_DIR;
             File binDir = new File(prefix, "bin");
             File dpkg = new File(binDir, "dpkg");
             if (!binDir.isDirectory() || !dpkg.isFile()) return; // bootstrap not extracted yet
             File dpkgReal = new File(binDir, "dpkg-real");
-            boolean dpkgIsElf = isElfFile(dpkg);
-            if (dpkgIsElf) {
-                // dpkg self-upgrade ne wrapper uda diya: stock binary ko
-                // dpkg-real banao aur wrapper wapas lagao. Asset pehle padho
-                // (fail ho to kuch touch mat karo), rename fail ho to
-                // stream-copy fallback, aur copy verify karke hi aage badho.
-                byte[] wrapperBytes = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
-                if (dpkgReal.exists() && !dpkgReal.delete()) return;
-                if (!dpkg.renameTo(dpkgReal) && !copyFile(dpkg, dpkgReal)) return;
-                if (!isElfFile(dpkgReal)) return;
-                writeBytes(dpkg, wrapperBytes);
-            } else if (dpkgReal.isFile()) {
+            byte[] wrapperBytes = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
+            if (isElfFile(dpkg)) {
+                // Wrapper gayab hai (dpkg self-upgrade): pehle stock binary ko
+                // streams se dpkg-real me copy karke verify karo, phir wrapper
+                // ko bin/dpkg me seedha (truncate-in-place) likho. Delete/rename
+                // par bharosa nahi — device par repair wahi atakta raha hai,
+                // aur purani chup-chaap catch wajah bhi chhupa deti thi.
+                report.append("bin/dpkg par stock binary tha (wrapper gayab)\n");
+                if (!copyFileVerified(dpkg, dpkgReal)) {
+                    report.append("FAIL: stock binary dpkg-real me copy nahi hua\n");
+                } else if (!writeFileDirect(dpkg, wrapperBytes)) {
+                    report.append("FAIL: bin/dpkg par wrapper nahi likha gaya\n");
+                }
+            } else if (dpkgReal.isFile() && isElfFile(dpkgReal)) {
                 // Wrapper script pehle se hai: asset me nayi version ho to
                 // refresh karo (sirf tab, jab maujud file hamari hi ho).
-                try {
-                    byte[] asset = readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh");
-                    byte[] current = readFileBytes(dpkg);
-                    if (current != null && !Arrays.equals(current, asset)
-                        && new String(current, StandardCharsets.UTF_8).contains("Termux Agent App")) {
-                        writeBytes(dpkg, asset);
-                    }
-                } catch (Exception ignored) {
+                byte[] current = readFileBytes(dpkg);
+                if (current != null && !Arrays.equals(current, wrapperBytes)
+                    && new String(current, StandardCharsets.UTF_8).contains("Termux Agent App")) {
+                    writeBytes(dpkg, wrapperBytes);
                 }
+            } else {
+                report.append("FAIL: dpkg-real missing hai ya binary nahi hai\n");
             }
             dpkg.setExecutable(true, false);
             if (dpkgReal.isFile()) dpkgReal.setExecutable(true, false);
             File shareDir = new File(prefix, "share/termux-agent");
-            writeBytes(new File(shareDir, "dpkg-wrapper.sh"),
-                readAssetBytes("bootstrap-fixes/dpkg-wrapper.sh"));
+            writeBytes(new File(shareDir, "dpkg-wrapper.sh"), wrapperBytes);
             File restore = new File(shareDir, "restore-dpkg-wrapper.sh");
             writeBytes(restore, readAssetBytes("bootstrap-fixes/restore-dpkg-wrapper.sh"));
             restore.setExecutable(true, false);
@@ -190,7 +196,24 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
                 ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
                     + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
                     .getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ignored) {
+            // Antim jaanch — bin/dpkg ab script (#!) hai ya nahi. Healthy ho to
+            // report saaf; warna report chat card + file dono me jayegi (Step 17).
+            byte[] head = readFirstBytes(dpkg, 2);
+            if (head != null && head[0] == '#' && head[1] == '!') {
+                sLastDpkgFixReport = null;
+            } else {
+                report.append("FAIL: antim jaanch — bin/dpkg ab bhi script nahi hai\n");
+                sLastDpkgFixReport = report.toString();
+                writeReportFile(sLastDpkgFixReport);
+            }
+        } catch (Exception e) {
+            report.append("EXCEPTION: ").append(e.getClass().getSimpleName())
+                .append(": ").append(String.valueOf(e.getMessage())).append('\n');
+            sLastDpkgFixReport = report.toString();
+            try {
+                writeReportFile(sLastDpkgFixReport);
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -214,6 +237,37 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** Copy ke baad verify bhi: destination pura ELF hai ya nahi. */
+    private static boolean copyFileVerified(File src, File dst) {
+        return copyFile(src, dst) && dst.isFile()
+            && dst.length() == src.length() && isElfFile(dst);
+    }
+
+    /** Chhoti file ko truncate-in-place likho — koi delete/rename nahi. */
+    private static boolean writeFileDirect(File target, byte[] content) {
+        try (FileOutputStream out = new FileOutputStream(target, false)) {
+            out.write(content);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static byte[] readFirstBytes(File file, int count) {
+        try (FileInputStream in = new FileInputStream(file)) {
+            byte[] buffer = new byte[count];
+            if (in.read(buffer) != count) return null;
+            return buffer;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void writeReportFile(String text) throws Exception {
+        writeBytes(new File(TermuxConstants.TERMUX_HOME_DIR_PATH, "dpkg_fix_report.txt"),
+            text.getBytes(StandardCharsets.UTF_8));
     }
 
     private static byte[] readFileBytes(File file) {

@@ -183,6 +183,11 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         // setup runs silently inside the session; the approved design keeps
         // the chat empty until the user actually talks to an agent.
         ensureBootstrapAndSession(this::refreshIdleStatus);
+        // Ek hi exception (Step 17): dpkg fix fail hua ho to uski report chat
+        // me khud dikhe — success par koi card nahi, chat saaf rehti hai.
+        if (sLastDpkgFixReport != null) {
+            addMessage(ChatMessage.result("Package fix fail ho gaya", sLastDpkgFixReport, null));
+        }
     }
 
     // ---------- chat flow ----------
