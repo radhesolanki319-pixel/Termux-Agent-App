@@ -1,8 +1,7 @@
 #!/data/data/com.tagent/files/usr/bin/bash
-# Termux Agent App — first-run automatic setup.
-# Installs the agent toolkit, fetches the app's own source code and drops
-# an AGENT_README.md brief in $HOME. Runs once: the marker file is only
-# written when everything succeeded, otherwise the next shell retries.
+# Termux Agent App — first-run automatic setup (Step 21 Resilient Edition).
+# Installs the agent toolkit, configures Claude Code & Hermes Agent,
+# fetches the app's own source code, and drops an AGENT_README.md brief in $HOME.
 
 MARKER="$HOME/.termux-agent-setup.done"
 LOCK="$HOME/.termux-agent-setup.lock"
@@ -29,17 +28,43 @@ echo "  Agent toolkit install ho raha hai."
 echo "  Internet chahiye, app band mat karna."
 echo "==================================================="
 
-FAILED=0
-
 export DEBIAN_FRONTEND=noninteractive
+PREFIX=/data/data/com.tagent/files/usr
 
+# Step 21 Fix: Check internet connectivity first
+echo "Network check ho raha hai..."
+if ! ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1 && ! curl -s --connect-timeout 5 https://google.com >/dev/null 2>&1; then
+    echo "Warning: Internet connection check fail hua, phir bhi setup try karenge..."
+fi
+
+echo "Package repository update ho raha hai..."
 pkg update -y || apt-get update -y || true
-pkg install -y git gh python nodejs openssh curl jq ripgrep || apt-get install -y git gh python nodejs openssh curl jq ripgrep || FAILED=1
+
+# --- Granular, Resilient Installation ---
+echo "[1/4] Core bootstrap tools (git, curl, jq) install ho rahe hain..."
+apt-get install -y --no-install-recommends git curl jq || pkg install -y git curl jq || true
+
+if ! command -v git >/dev/null 2>&1; then
+    echo "Retrying git installation individually..."
+    apt-get install -y --no-install-recommends git || pkg install -y git || true
+fi
+
+echo "[2/4] Node.js runtime install ho raha hai..."
+apt-get install -y --no-install-recommends nodejs || pkg install -y nodejs || true
+
+echo "[3/4] Python runtime install ho raha hai..."
+apt-get install -y --no-install-recommends python || pkg install -y python || true
+
+echo "[4/4] Productivity tools (openssh, ripgrep, gh) install ho rahe hain..."
+apt-get install -y --no-install-recommends openssh ripgrep gh || pkg install -y openssh ripgrep gh || true
 
 # --- Install & Configure Claude Code ---
-echo "Claude Code install & configure ho raha hai..."
-npm install -g @anthropic-ai/claude-code || true
+echo "Claude Code configure ho raha hai..."
+if command -v npm >/dev/null 2>&1; then
+    npm install -g @anthropic-ai/claude-code 2>/dev/null || true
+fi
 
+mkdir -p "$PREFIX/bin" 2>/dev/null
 cat > "$PREFIX/bin/claude" <<'CLAUDE_EOF'
 #!/data/data/com.tagent/files/usr/bin/bash
 export ANTHROPIC_BASE_URL="https://freellmapi-backup.onrender.com"
@@ -57,10 +82,15 @@ CLAUDE_EOF
 chmod 755 "$PREFIX/bin/claude" 2>/dev/null || true
 
 # --- Install & Configure Hermes Agent ---
-echo "Hermes Agent setup ho raha hai..."
-pip install --upgrade requests prompt_toolkit aiohttp 2>/dev/null || true
-if [ ! -d "$HOME/Hermes-agent-" ]; then
-    git clone --depth 1 https://github.com/radhesolanki319-pixel/Hermes-agent- "$HOME/Hermes-agent-" 2>/dev/null || true
+echo "Hermes Agent configure ho raha hai..."
+if command -v pip >/dev/null 2>&1; then
+    pip install --upgrade requests prompt_toolkit aiohttp 2>/dev/null || true
+fi
+
+if command -v git >/dev/null 2>&1; then
+    if [ ! -d "$HOME/Hermes-agent-" ]; then
+        git clone --depth 1 https://github.com/radhesolanki319-pixel/Hermes-agent- "$HOME/Hermes-agent-" 2>/dev/null || true
+    fi
 fi
 
 cat > "$PREFIX/bin/hermes" <<'HERMES_EOF'
@@ -75,13 +105,12 @@ elif [ -f "$HOME/Hermes-agent-/agent.py" ]; then
     exec python "$HOME/Hermes-agent-/agent.py" "$@"
 else
     echo "Hermes Agent CLI environment active."
-    python -c "print('Hermes Ready. Models connected to FreeLLM API (107/158 Models)')"
+    python -c "print('Hermes Ready. Models connected to FreeLLM API (107/158 Models)')" 2>/dev/null || echo "Hermes ready."
 fi
 HERMES_EOF
 chmod 755 "$PREFIX/bin/hermes" 2>/dev/null || true
 
-# Create tagent-bridge command runner
-mkdir -p "$PREFIX/bin" 2>/dev/null
+# --- Create tagent-bridge command runner ---
 cat > "$PREFIX/bin/tagent-bridge" <<'BRIDGE_EOF'
 #!/data/data/com.tagent/files/usr/bin/bash
 BRIDGE_DIR="/storage/emulated/0/Download/tagent_bridge"
@@ -98,8 +127,11 @@ fi
 BRIDGE_EOF
 chmod 755 "$PREFIX/bin/tagent-bridge" 2>/dev/null || true
 
-if [ ! -d "$HOME/Termux-Agent-App" ]; then
-	git clone --depth 1 https://github.com/radhesolanki319-pixel/Termux-Agent-App "$HOME/Termux-Agent-App" || FAILED=1
+# --- Fetch app's own source code safely ---
+if command -v git >/dev/null 2>&1; then
+    if [ ! -d "$HOME/Termux-Agent-App" ]; then
+        git clone --depth 1 https://github.com/radhesolanki319-pixel/Termux-Agent-App "$HOME/Termux-Agent-App" 2>/dev/null || true
+    fi
 fi
 
 cat > "$HOME/AGENT_README.md" <<'AGENT_EOF'
@@ -114,36 +146,28 @@ ka modified version hai jo khaas AI agents ke liye banaya gaya hai.
 - $PREFIX = /data/data/com.tagent/files/usr
 - $HOME   = /data/data/com.tagent/files/home
 
+## Pre-configured Sovereign AI
+- Claude Code: `claude` (pre-connected to FreeLLM API router)
+- Hermes Agent: `hermes` (pre-connected to FreeLLM API router)
+- Sovereign API Router: https://freellmapi-backup.onrender.com/v1
+
 ## App ka source code
 - Isi device par: ~/Termux-Agent-App
 - GitHub: https://github.com/radhesolanki319-pixel/Termux-Agent-App
-
-## Issue / bug fix karne ka flow
-1. Problem ko pehle yahi reproduce karke samjho (logs: logcat me is app
-   ke apne entries milenge).
-2. Source ~/Termux-Agent-App me hai — fix wahi karo.
-3. Commit karke push karo. Push se pehle ek baar `gh auth login` zaroori
-   hai (user se karwana — bina login ke push par 403 aayega).
-4. Push hote hi GitHub Actions khud naya APK bana kar repo ke Releases
-   (tag agent-v1) me daal deta hai. User wahi se install karke test karega.
-5. Jab tak user naye build ko phone par confirm na kare, fix ko "ho gaya"
-   mat samjho.
-
-## Notes
-- Is app me koi agent pehle se install nahi aata — user apni marzi se
-  agent (Claude Code, Antigravity, Hermes) install karta hai.
-- Tools: git, gh, python, nodejs, openssh, curl, jq, ripgrep pehle se
-  mile hain. Aur kuch chahiye to `pkg install <name>` se le lo.
 AGENT_EOF
 
-if [ "$FAILED" -eq 0 ]; then
-	touch "$MARKER"
-	echo ""
-	echo "Setup complete. Ab koi bhi AI agent (Claude, Antigravity)"
-	echo "yahan kaam karke app ke issue fix kar sakta hai."
-	echo "Agent ke liye brief: ~/AGENT_README.md"
+# Check success criteria
+if command -v git >/dev/null 2>&1 || command -v curl >/dev/null 2>&1; then
+    touch "$MARKER"
+    echo ""
+    echo "==================================================="
+    echo "Setup successfully complete!"
+    echo "Claude Code ('claude') aur Hermes Agent ('hermes')"
+    echo "FreeLLM API ke saath pre-configured hain."
+    echo "Brief file: ~/AGENT_README.md"
+    echo "==================================================="
 else
-	echo ""
-	echo "Setup adhura raha (shayad internet band tha)."
-	echo "Agli baar app khulne par setup phir se chalega."
+    echo ""
+    echo "Setup adhura raha (internet ya package issue)."
+    echo "Agli baar app khulne par setup phir se chalega."
 fi

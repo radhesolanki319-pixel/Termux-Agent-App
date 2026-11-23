@@ -11,9 +11,6 @@
 # har .deb ko pehle com.tagent path me rewrite karke dpkg-real ko deta hai.
 # Bina .deb wale saare calls (--configure, --remove, queries waghera)
 # seedha pass-through hote hain.
-#
-# Rewrite kahin fail ho to wajah $HOME/dpkg_wrapper.log me likhi jati hai
-# (chup-chaap original .deb pass karne se asal error dikhta hi nahi tha).
 
 PREFIX=/data/data/com.tagent/files/usr
 DPKG_REAL="$PREFIX/bin/dpkg-real"
@@ -52,7 +49,6 @@ for a in "$@"; do
             rewritten=""
             if [ -f "$a" ]; then
                 # Sirf tab rewrite karo jab package ke andar purana path ho.
-                # Detection fail ho jaye to bhi rewrite karo (safe default).
                 need=1
                 if listing=$("$DPKG_DEB" -c "$a" 2>/dev/null); then
                     case "$listing" in
@@ -69,54 +65,63 @@ for a in "$@"; do
                     mkdir -p "$root"
                     if ! "$DPKG_DEB" -R "$a" "$root" >/dev/null 2>&1; then
                         log "FAIL extract (dpkg-deb -R): $a"
+                        echo "[dpkg-wrapper] Extraction failed: $a" >&2
                     elif [ ! -d "$root/data/data/com.termux" ]; then
                         log "FAIL extract ke baad data/data/com.termux dir nahi mila: $a"
                     else
                         mv "$root/data/data/com.termux" "$root/data/data/com.tagent"
-                        # Termux .deb ke maintainer scripts control.tar me 0644
-                        # mode ke saath aate hain; dpkg-deb -R unhe waisa hi
-                        # nikalta hai aur dpkg-deb --build bina exec permission
-                        # wale scripts ko reject kar deta hai (build fail ->
-                        # original .deb pass -> stat Permission denied).
-                        # Asal dpkg install ke samay khud chmod karta hai;
-                        # yahan build se pehle wahi fix-up karo.
+                        
+                        # Step 19 & 21: Set 0755 permissions strictly
+                        # Fix Android umask (0077) issue for root & DEBIAN
+                        chmod 755 "$root" "$root/DEBIAN" 2>/dev/null || true
+                        find "$root" -type d -exec chmod 755 {} + 2>/dev/null || true
+                        
                         for s in preinst postinst prerm postrm config; do
                             if [ -f "$root/DEBIAN/$s" ]; then
-                                chmod 755 "$root/DEBIAN/$s" 2>/dev/null
+                                chmod 755 "$root/DEBIAN/$s" 2>/dev/null || true
                             fi
                         done
-                        # CRITICAL FIX (Bug #1): Android umask 0077 causes $root and $root/DEBIAN
-                        # to be created with 0700 mode. dpkg-deb --build strictly rejects DEBIAN with:
-                        # "control directory has bad permissions 700 (must be >=0755 and <=0775)".
-                        # Set 0755 on $root, $root/DEBIAN, and all directory trees:
-                        chmod 755 "$root" "$root/DEBIAN" 2>/dev/null
-                        find "$root" -type d -exec chmod 755 {} + 2>/dev/null
+
+                        # Binary and script path substitution
                         grep -rl 'com\.termux' "$root" 2>/dev/null | while IFS= read -r f; do
-                            sed -i 's|com\.termux|com.tagent|g' "$f"
+                            sed -i 's|com\.termux|com.tagent|g' "$f" 2>/dev/null || true
                         done
-                        find "$root" -type l | while IFS= read -r l; do
+
+                        find "$root" -type l 2>/dev/null | while IFS= read -r l; do
                             t=$(readlink "$l")
                             case "$t" in
                                 *com.termux*)
-                                    ln -snf "$(printf %s "$t" | sed 's|com\.termux|com.tagent|g')" "$l" ;;
+                                    ln -snf "$(printf %s "$t" | sed 's|com\.termux|com.tagent|g')" "$l" 2>/dev/null || true
+                                    ;;
                             esac
                         done
+
                         if [ -f "$root/DEBIAN/md5sums" ]; then
                             ( cd "$root" && find data -type f -print0 | LC_ALL=C sort -z \
                                 | xargs -0 md5sum > DEBIAN/md5sums.tmp \
-                                && mv DEBIAN/md5sums.tmp DEBIAN/md5sums )
+                                && mv DEBIAN/md5sums.tmp DEBIAN/md5sums ) 2>/dev/null || true
                         fi
-                        if "$DPKG_DEB" --build "$root" "$out" >/dev/null 2>&1; then
+
+                        # Step 21: Fast gzip compression (-Zgzip -z1) - 3x faster, minimal RAM & CPU
+                        err_log="$WORK/err$i.log"
+                        if "$DPKG_DEB" -Zgzip -z1 --build "$root" "$out" >"$err_log" 2>&1; then
                             rewritten="$out"
                         else
                             log "FAIL rebuild (dpkg-deb --build): $a"
+                            echo "[dpkg-wrapper] Rebuild failed for $a:" >&2
+                            cat "$err_log" >&2 2>/dev/null || true
                         fi
+
+                        # Step 21: Clean root directory immediately to conserve disk space
+                        rm -rf "$root" "$err_log" 2>/dev/null || true
                     fi
                 fi
             fi
             if [ -n "$rewritten" ]; then
                 new_args+=("$rewritten")
             else
+                log "FALLBACK: Unmodified deb passed: $a"
+                echo "[dpkg-wrapper] Warning: Passing original deb for $a" >&2
                 new_args+=("$a")
             fi
             ;;

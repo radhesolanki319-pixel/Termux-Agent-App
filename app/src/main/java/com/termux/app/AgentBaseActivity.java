@@ -208,6 +208,15 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
                     ("post-invoke=\"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH
                         + "/share/termux-agent/restore-dpkg-wrapper.sh\"\n")
                         .getBytes(StandardCharsets.UTF_8));
+                // Step 21: Keep first-setup.sh synchronized so APK updates always carry latest resilient setup
+                File agentEtcDir = new File(prefix, "etc/termux-agent");
+                if (!agentEtcDir.isDirectory()) agentEtcDir.mkdirs();
+                byte[] setupBytes = readAssetBytes("bootstrap-fixes/first-setup.sh");
+                if (setupBytes != null && setupBytes.length > 0) {
+                    File setupFile = new File(agentEtcDir, "first-setup.sh");
+                    writeBytes(setupFile, setupBytes);
+                    setupFile.setExecutable(true, false);
+                }
                 // Antim jaanch — bin/dpkg ab script (#!) hai ya nahi. Healthy ho to
                 // report saaf; warna report chat card + file dono me jayegi (Step 17).
                 byte[] head = readFirstBytes(dpkg, 2);
