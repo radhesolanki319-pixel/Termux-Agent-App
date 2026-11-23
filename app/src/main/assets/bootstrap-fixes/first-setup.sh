@@ -74,10 +74,12 @@ if [ ! -f "$HOME/.claude.json" ]; then
   }
 }
 CONFIG_EOF
+else
+    sed -i 's/"autoUpdates": true/"autoUpdates": false/g' "$HOME/.claude.json" 2>/dev/null || true
 fi
 
 if command -v npm >/dev/null 2>&1; then
-    DISABLE_AUTOUPDATER=1 npm install -g --force @anthropic-ai/claude-code@2.1.112 2>/dev/null || true
+    DISABLE_AUTOUPDATER=1 CLAUDE_CODE_DISABLE_AUTOUPDATER=1 npm install -g --force @anthropic-ai/claude-code@2.1.111 2>/dev/null || true
 fi
 
 mkdir -p "$PREFIX/bin" 2>/dev/null
@@ -88,6 +90,13 @@ export ANTHROPIC_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f788
 export OPENAI_BASE_URL="https://freellmapi-backup.onrender.com/v1"
 export OPENAI_API_KEY="freellmapi-c7bf396fcf0351dbba9546933a8881054c627e6f78875206"
 export DISABLE_AUTOUPDATER=1
+export CLAUDE_CODE_DISABLE_AUTOUPDATER=1
+export CLAUDE_AUTO_UPDATER=0
+
+if [ -f "$HOME/.claude.json" ]; then
+    sed -i 's/"autoUpdates": true/"autoUpdates": false/g' "$HOME/.claude.json" 2>/dev/null || true
+fi
+
 if [ -f "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" ]; then
     exec node "$PREFIX/lib/node_modules/@anthropic-ai/claude-code/cli.js" "$@"
 elif [ -f "$PREFIX/lib/node_modules/@xurxuo/claude-code-termux/cli-wrapper.cjs" ]; then
@@ -95,7 +104,7 @@ elif [ -f "$PREFIX/lib/node_modules/@xurxuo/claude-code-termux/cli-wrapper.cjs" 
 elif command -v claude-code >/dev/null 2>&1; then
     exec claude-code "$@"
 else
-    exec npx -y @anthropic-ai/claude-code@2.1.112 "$@"
+    exec npx -y @anthropic-ai/claude-code@2.1.111 "$@"
 fi
 CLAUDE_EOF
 chmod 755 "$PREFIX/bin/claude" 2>/dev/null || true
