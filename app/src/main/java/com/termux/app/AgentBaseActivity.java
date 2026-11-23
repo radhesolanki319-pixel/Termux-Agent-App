@@ -9,6 +9,7 @@ import android.os.IBinder;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.termux.app.agentui.AgentHeader;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -36,6 +37,25 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
 
     protected TermuxService mTermuxService;
     private boolean mServiceBound;
+    private AgentHeader mAgentHeader;
+
+    /** Har Agent screen apna header yahan register karti hai taaki base class
+     *  screen ke pause/resume par avatar video rok/saka sake (battery, Step 16). */
+    protected final void registerAgentHeader(AgentHeader header) {
+        mAgentHeader = header;
+    }
+
+    @Override
+    protected void onPause() {
+        if (mAgentHeader != null) mAgentHeader.onHostPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mAgentHeader != null) mAgentHeader.onHostResume();
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {

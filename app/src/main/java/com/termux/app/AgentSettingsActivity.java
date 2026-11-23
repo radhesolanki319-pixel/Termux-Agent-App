@@ -34,6 +34,7 @@ public final class AgentSettingsActivity extends AgentBaseActivity {
         setContentView(R.layout.activity_agent_settings);
 
         mHeader = new AgentHeader(this);
+        registerAgentHeader(mHeader);
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> {

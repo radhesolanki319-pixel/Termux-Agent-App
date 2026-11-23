@@ -43,6 +43,7 @@ public final class AgentSessionsActivity extends AgentBaseActivity {
         setContentView(R.layout.activity_agent_sessions);
 
         mHeader = new AgentHeader(this);
+        registerAgentHeader(mHeader);
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));
         mHeader.setOnNewSessionClick(v -> startActivity(new Intent(this, AgentTerminalActivity.class)));

@@ -35,6 +35,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     private String mClip = "avatar/avatar_idle.mp4";
     private boolean mWorking;
     private boolean mVideoEnabled = true;
+    private boolean mPausedByHost;
 
     public AgentHeader(Activity activity) {
         mActivity = activity;
@@ -175,6 +176,7 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
     }
 
     private void releasePlayer() {
+        mPausedByHost = false;
         if (mPlayer != null) {
             try {
                 mPlayer.stop();
@@ -182,6 +184,35 @@ public final class AgentHeader implements TextureView.SurfaceTextureListener {
             }
             mPlayer.release();
             mPlayer = null;
+        }
+    }
+
+    /**
+     * Battery (Step 16): host screen foreground me nahi hai (dusri screen,
+     * app background me, ya screen band) to avatar video ka decode turant
+     * roko — background me faltu kuch nahi chalna chahiye. Wapas aane par
+     * wahin se resume; surface khatm ho gaya ho to naya player khud banta hai.
+     */
+    public void onHostPause() {
+        if (mPlayer != null) {
+            try {
+                if (mPlayer.isPlaying()) {
+                    mPlayer.pause();
+                    mPausedByHost = true;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public void onHostResume() {
+        if (!mPausedByHost) return;
+        mPausedByHost = false;
+        if (mPlayer != null) {
+            try {
+                mPlayer.start();
+            } catch (Exception ignored) {
+            }
         }
     }
 

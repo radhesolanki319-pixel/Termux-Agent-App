@@ -92,6 +92,7 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         }
 
         mHeader = new AgentHeader(this);
+        registerAgentHeader(mHeader);
         // Step 13: idle-terminal lag — the live avatar video (MediaPlayer +
         // TextureView) is a continuous decode/composition cost this screen
         // does not need; show the still Jolly here instead.

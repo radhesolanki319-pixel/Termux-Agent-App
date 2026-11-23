@@ -38,6 +38,7 @@ public final class AgentConnectActivity extends AgentBaseActivity {
         setContentView(R.layout.activity_agent_connect);
 
         mHeader = new AgentHeader(this);
+        registerAgentHeader(mHeader);
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
         mHeader.setOnMenuClick(v -> AgentNav.wireMenuBack(this));
         mHeader.setOnSettingsClick(v -> startActivity(new Intent(this, AgentSettingsActivity.class)));

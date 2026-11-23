@@ -80,6 +80,7 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         setContentView(R.layout.activity_agent_chat);
 
         mHeader = new AgentHeader(this);
+        registerAgentHeader(mHeader);
         mHeader.setAgentName(AgentStore.getCurrentAgent(this));
 
         mDrawer = findViewById(R.id.chat_drawer);
@@ -160,6 +161,20 @@ public final class AgentChatActivity extends AgentBaseActivity implements ChatAd
         mHandler.removeCallbacks(mWorkTick);
         if (mHeader != null) mHeader.release();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onPause() {
+        // Screen foreground me nahi to working-tick bhi band (battery, Step 16);
+        // header video ka pause base class sambhalti hai.
+        mHandler.removeCallbacks(mWorkTick);
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mWorkingSince != 0) mHandler.postDelayed(mWorkTick, 4000);
     }
 
     @Override
