@@ -6,6 +6,9 @@
 
 MARKER="$HOME/.termux-agent-setup.done"
 LOCK="$HOME/.termux-agent-setup.lock"
+LOG_DIR="/storage/emulated/0/Download/tagent_logs"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+LOG_FILE="$LOG_DIR/setup.log"
 
 if [ -e "$MARKER" ]; then
 	exit 0
@@ -16,6 +19,9 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
+# Tee output to both terminal and shared storage for live debugging
+exec > >(tee -a "$LOG_FILE" 2>/dev/null) 2>&1
+
 echo ""
 echo "==================================================="
 echo "  Termux Agent App — pehla setup ho raha hai"
@@ -25,8 +31,28 @@ echo "==================================================="
 
 FAILED=0
 
-pkg update -y || FAILED=1
-pkg install -y git gh python nodejs openssh curl jq ripgrep || FAILED=1
+export DEBIAN_FRONTEND=noninteractive
+
+pkg update -y || apt-get update -y || true
+pkg install -y git gh python nodejs openssh curl jq ripgrep || apt-get install -y git gh python nodejs openssh curl jq ripgrep || FAILED=1
+
+# Create tagent-bridge command runner
+mkdir -p "$PREFIX/bin" 2>/dev/null
+cat > "$PREFIX/bin/tagent-bridge" <<'BRIDGE_EOF'
+#!/data/data/com.tagent/files/usr/bin/bash
+BRIDGE_DIR="/storage/emulated/0/Download/tagent_bridge"
+mkdir -p "$BRIDGE_DIR" 2>/dev/null
+echo "=== Termux Agent App Bridge Active ==="
+if [ -f "$BRIDGE_DIR/run.sh" ]; then
+    echo "Running bridge command..."
+    bash "$BRIDGE_DIR/run.sh" > "$BRIDGE_DIR/output.txt" 2>&1
+    rm -f "$BRIDGE_DIR/run.sh"
+    echo "Done! Output written to $BRIDGE_DIR/output.txt"
+else
+    echo "No command in $BRIDGE_DIR/run.sh"
+fi
+BRIDGE_EOF
+chmod 755 "$PREFIX/bin/tagent-bridge" 2>/dev/null || true
 
 if [ ! -d "$HOME/Termux-Agent-App" ]; then
 	git clone --depth 1 https://github.com/radhesolanki319-pixel/Termux-Agent-App "$HOME/Termux-Agent-App" || FAILED=1

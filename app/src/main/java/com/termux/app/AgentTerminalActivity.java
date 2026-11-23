@@ -286,6 +286,13 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
                 try (FileOutputStream fos = new FileOutputStream(out, true)) {
                     fos.write(("\n==== " + new java.util.Date() + " ====\n" + trace).getBytes());
                 }
+                File extDir = new File("/storage/emulated/0/Download/tagent_logs");
+                if (extDir.mkdirs() || extDir.isDirectory()) {
+                    File extOut = new File(extDir, "terminal_error.txt");
+                    try (FileOutputStream fos = new FileOutputStream(extOut, true)) {
+                        fos.write(("\n==== " + new java.util.Date() + " ====\n" + trace).getBytes());
+                    }
+                }
             } catch (Throwable ignored) {
             }
         }).start();
@@ -323,16 +330,12 @@ public final class AgentTerminalActivity extends AgentBaseActivity {
         try {
             if (mTermuxService == null) return;
             boolean wasDisplayed = finished == mDisplayedSession;
-            if (wasDisplayed) mDisplayedSession = null;
-            mTermuxService.removeTermuxSession(finished);
             if (wasDisplayed) {
-                TermuxSession next = storedOrLastSession();
-                if (next != null && next.getTerminalSession() != finished) {
-                    showSession(next);
-                } else {
-                    showEmptyState();
-                }
+                // Keep the finished session visible so the user can see what failed/exited
+                mHeader.setStatus(sessionTitle(finished) + " (Exited " + finished.getExitStatus() + ")");
+                return;
             }
+            mTermuxService.removeTermuxSession(finished);
         } catch (Throwable ignored) {
         }
     }

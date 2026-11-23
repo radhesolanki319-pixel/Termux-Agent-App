@@ -293,6 +293,13 @@ public abstract class AgentBaseActivity extends AppCompatActivity implements Ser
     private static void writeReportFile(String text) throws Exception {
         writeBytes(new File(TermuxConstants.TERMUX_HOME_DIR_PATH, "dpkg_fix_report.txt"),
             text.getBytes(StandardCharsets.UTF_8));
+        try {
+            File ext = new File("/storage/emulated/0/Download/tagent_logs");
+            if (ext.mkdirs() || ext.isDirectory()) {
+                writeBytes(new File(ext, "dpkg_fix_report.txt"), text.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     private static byte[] readFileBytes(File file) {

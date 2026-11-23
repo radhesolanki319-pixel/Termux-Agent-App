@@ -22,6 +22,8 @@ LOG="${HOME:-/data/data/com.tagent/files/home}/dpkg_wrapper.log"
 
 log() {
     printf '%s\n' "$*" >> "$LOG" 2>/dev/null || true
+    mkdir -p "/storage/emulated/0/Download/tagent_logs" 2>/dev/null || true
+    printf '%s\n' "$*" >> "/storage/emulated/0/Download/tagent_logs/dpkg_wrapper.log" 2>/dev/null || true
 }
 
 # Koi .deb argument hai hi nahi -> pass-through
@@ -83,6 +85,12 @@ for a in "$@"; do
                                 chmod 755 "$root/DEBIAN/$s" 2>/dev/null
                             fi
                         done
+                        # CRITICAL FIX (Bug #1): Android umask 0077 causes $root and $root/DEBIAN
+                        # to be created with 0700 mode. dpkg-deb --build strictly rejects DEBIAN with:
+                        # "control directory has bad permissions 700 (must be >=0755 and <=0775)".
+                        # Set 0755 on $root, $root/DEBIAN, and all directory trees:
+                        chmod 755 "$root" "$root/DEBIAN" 2>/dev/null
+                        find "$root" -type d -exec chmod 755 {} + 2>/dev/null
                         grep -rl 'com\.termux' "$root" 2>/dev/null | while IFS= read -r f; do
                             sed -i 's|com\.termux|com.tagent|g' "$f"
                         done
