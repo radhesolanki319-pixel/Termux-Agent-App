@@ -159,6 +159,37 @@ ka modified version hai jo khaas AI agents ke liye banaya gaya hai.
 - GitHub: https://github.com/radhesolanki319-pixel/Termux-Agent-App
 AGENT_EOF
 
+cat > "$HOME/CLAUDE.md" <<'CLAUDE_MD_EOF'
+# Termux Agent App — System & Environment Guide for Claude Code
+
+## 1. User & Communication Mandate
+- **User / Commander**: Boss (Radhe Solanki). Always address as **Boss**.
+- **Language**: Strictly Roman Hinglish (Hindi written in English alphabets + technical English). Never speak in pure English. Never use Devanagari script.
+
+## 2. Environment & Sandbox Rules (CRITICAL)
+- **Current App**: Termux Agent App (Package: `com.tagent`).
+- **Paths**:
+  - `$PREFIX`: `/data/data/com.tagent/files/usr`
+  - `$HOME`: `/data/data/com.tagent/files/home`
+- **STRICT PROHIBITION**: NEVER touch or modify `/data/data/com.termux`. That is Boss's main host Termux environment. Respect sandbox boundaries.
+
+## 3. Package Management & Tooling Rules
+- **Package Manager**: Use `apt-get` or `apt` directly (e.g., `apt install -y <pkg>`).
+- **C++ & Node Runtimes**: Node.js and packages depend on `libc++` and `openssl 3.5.0`. Never downgrade core libraries.
+- **Dpkg Wrapper**: `bin/dpkg` is a custom wrapper that auto-rewrites upstream packages from `com.termux` to `com.tagent`. Never delete `bin/dpkg` or `bin/dpkg-real`.
+
+## 4. Hardware & Thermal Protection
+- **Phone Model**: iQOO Neo 10 (Android 15 / Funtouch OS 15).
+- **Target Temperature**: 34°C - 35°C.
+- **Strict Zero-Background Daemon Rule**: Never launch background servers, daemons, or infinite loops (`nohup`, `&`, persistent HTTP listeners). All commands must run synchronously and exit cleanly.
+
+## 5. Sovereign AI Integration
+- **API Router**: Pre-configured to `https://freellmapi-backup.onrender.com/v1`.
+- **Roster**: 158 Flagship AI models accessible via sovereign key.
+CLAUDE_MD_EOF
+
+cp "$HOME/CLAUDE.md" "$HOME/HERMES.md" 2>/dev/null || true
+
 # Check success criteria
 if command -v git >/dev/null 2>&1 || command -v curl >/dev/null 2>&1; then
     touch "$MARKER"
